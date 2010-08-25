@@ -1,0 +1,17 @@
+***************
+*** 104,110 ****
+  #import "CCRadialTransition.h"
+  #import "CCProgressTimerActions.h"
+  #import "CCPropertyAction.h"
+- 
+  //
+  // cocos2d macros
+  //
+--- 104,110 ----
+  #import "CCRadialTransition.h"
+  #import "CCProgressTimerActions.h"
+  #import "CCPropertyAction.h"
++ #import "CCGestureRecognizer.h"
+  //
+  // cocos2d macros
+  //

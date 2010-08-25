@@ -1,0 +1,92 @@
+***************
+*** 37,48 ****
+  /** CCLayer is a subclass of CCNode that implements the TouchEventsDelegate protocol.
+   
+   All features from CCNode are valid, plus the following new features:
+-  - It can receive iPhone Touches
+   - It can receive Accelerometer input
+  */
+  @interface CCLayer : CCNode <UIAccelerometerDelegate, CCStandardTouchDelegate, CCTargetedTouchDelegate>
+  {
+- 	BOOL isTouchEnabled;
+  	BOOL isAccelerometerEnabled;
+  }
+  
+--- 37,46 ----
+  /** CCLayer is a subclass of CCNode that implements the TouchEventsDelegate protocol.
+   
+   All features from CCNode are valid, plus the following new features:
+   - It can receive Accelerometer input
+  */
+  @interface CCLayer : CCNode <UIAccelerometerDelegate, CCStandardTouchDelegate, CCTargetedTouchDelegate>
+  {
+  	BOOL isAccelerometerEnabled;
+  }
+  
+***************
+*** 58,69 ****
+   */
+  -(void) registerWithTouchDispatcher;
+  
+- /** whether or not it will receive Touch events.
+-  You can enable / disable touch events with this property.
+-  Only the touches of this node will be affected. This "method" is not propagated to it's children.
+-  @since v0.8.1
+-  */
+- @property(nonatomic,assign) BOOL isTouchEnabled;
+  /** whether or not it will receive Accelerometer events
+   You can enable / disable accelerometer events with this property.
+   @since v0.8.1
+--- 56,61 ----
+   */
+  -(void) registerWithTouchDispatcher;
+  
+  /** whether or not it will receive Accelerometer events
+   You can enable / disable accelerometer events with this property.
+   @since v0.8.1
+***************
+*** 37,48 ****
+  /** CCLayer is a subclass of CCNode that implements the TouchEventsDelegate protocol.
+   
+   All features from CCNode are valid, plus the following new features:
+-  - It can receive iPhone Touches
+   - It can receive Accelerometer input
+  */
+  @interface CCLayer : CCNode <UIAccelerometerDelegate, CCStandardTouchDelegate, CCTargetedTouchDelegate>
+  {
+- 	BOOL isTouchEnabled;
+  	BOOL isAccelerometerEnabled;
+  }
+  
+--- 37,46 ----
+  /** CCLayer is a subclass of CCNode that implements the TouchEventsDelegate protocol.
+   
+   All features from CCNode are valid, plus the following new features:
+   - It can receive Accelerometer input
+  */
+  @interface CCLayer : CCNode <UIAccelerometerDelegate, CCStandardTouchDelegate, CCTargetedTouchDelegate>
+  {
+  	BOOL isAccelerometerEnabled;
+  }
+  
+***************
+*** 58,69 ****
+   */
+  -(void) registerWithTouchDispatcher;
+  
+- /** whether or not it will receive Touch events.
+-  You can enable / disable touch events with this property.
+-  Only the touches of this node will be affected. This "method" is not propagated to it's children.
+-  @since v0.8.1
+-  */
+- @property(nonatomic,assign) BOOL isTouchEnabled;
+  /** whether or not it will receive Accelerometer events
+   You can enable / disable accelerometer events with this property.
+   @since v0.8.1
+--- 56,61 ----
+   */
+  -(void) registerWithTouchDispatcher;
+  
+  /** whether or not it will receive Accelerometer events
+   You can enable / disable accelerometer events with this property.
+   @since v0.8.1

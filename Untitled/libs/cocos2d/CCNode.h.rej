@@ -1,0 +1,71 @@
+***************
+*** 32,37 ****
+  #import "CCProtocols.h"
+  #import "ccConfig.h"
+  #import "Support/CCArray.h"
+  
+  enum {
+  	kCCNodeTagInvalid = -1,
+--- 32,38 ----
+  #import "CCProtocols.h"
+  #import "ccConfig.h"
+  #import "Support/CCArray.h"
++ #import "CCGestureRecognizer.h"
+  
+  enum {
+  	kCCNodeTagInvalid = -1,
+***************
+*** 159,164 ****
+  #if	CC_NODE_TRANSFORM_USING_AFFINE_MATRIX
+  	BOOL isTransformGLDirty_:1;
+  #endif
+  }
+  
+  /** The z order of the node relative to it's "brothers": children of the same parent */
+--- 160,169 ----
+  #if	CC_NODE_TRANSFORM_USING_AFFINE_MATRIX
+  	BOOL isTransformGLDirty_:1;
+  #endif
++   
++   CCArray* gestureRecognizers_;
++   CGSize touchableArea_;
++   BOOL isTouchEnabled;
+  }
+  
+  /** The z order of the node relative to it's "brothers": children of the same parent */
+***************
+*** 436,441 ****
+   */
+  -(void) pauseSchedulerAndActions;
+  
+  // transformation methods
+  
+  /** Returns the local affine transform matrix
+--- 441,467 ----
+   */
+  -(void) pauseSchedulerAndActions;
+  
++ -(void) addGestureRecognizer:(CCGestureRecognizer*)gestureRecognizer;
++ -(void) removeGestureRecognizer:(CCGestureRecognizer*)gestureRecognizer;
++ -(void) stopAllGestureRecognizers;
++ -(void) startAllGestureRecognizers;
++ 
++ /*  used to see if a touch is in a nodes touchAble area, if the area isn't set
++  the content size is used */
++ -(BOOL) isPointInArea:(CGPoint)pt;
++ -(BOOL) isNodeInTreeTouched:(CGPoint)pt;
++ 
++ /* property for getting/setting touchable area */
++ @property(nonatomic,assign) CGSize touchableArea;
++ @property(nonatomic,readonly) CCArray *gestureRecognizers;
++ 
++ /** whether or not it will receive Touch events.
++  You can enable / disable touch events with this property.
++  Only the touches of this node will be affected. This "method" is not propagated to it's children.
++  @since v0.8.1
++  */
++ @property(nonatomic,assign) BOOL isTouchEnabled;
++ 
+  // transformation methods
+  
+  /** Returns the local affine transform matrix

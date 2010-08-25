@@ -1,0 +1,363 @@
+Only in cocos2d: CCGestureRecognizer.h
+Only in cocos2d: CCGestureRecognizer.m
+Only in cocos2d: CCGestureRecognizer.mm.orig
+diff -c /Users/joe/cocos2d/CCLayer.h cocos2d/CCLayer.h
+*** /Users/joe/cocos2d/CCLayer.h	2010-08-24 07:54:00.000000000 -0700
+--- cocos2d/CCLayer.h	2010-08-24 17:47:13.000000000 -0700
+***************
+*** 37,48 ****
+  /** CCLayer is a subclass of CCNode that implements the TouchEventsDelegate protocol.
+   
+   All features from CCNode are valid, plus the following new features:
+-  - It can receive iPhone Touches
+   - It can receive Accelerometer input
+  */
+  @interface CCLayer : CCNode <UIAccelerometerDelegate, CCStandardTouchDelegate, CCTargetedTouchDelegate>
+  {
+- 	BOOL isTouchEnabled;
+  	BOOL isAccelerometerEnabled;
+  }
+  
+--- 37,46 ----
+***************
+*** 58,69 ****
+   */
+  -(void) registerWithTouchDispatcher;
+  
+- /** whether or not it will receive Touch events.
+-  You can enable / disable touch events with this property.
+-  Only the touches of this node will be affected. This "method" is not propagated to it's children.
+-  @since v0.8.1
+-  */
+- @property(nonatomic,assign) BOOL isTouchEnabled;
+  /** whether or not it will receive Accelerometer events
+   You can enable / disable accelerometer events with this property.
+   @since v0.8.1
+--- 56,61 ----
+diff -c /Users/joe/cocos2d/CCLayer.m cocos2d/CCLayer.m
+*** /Users/joe/cocos2d/CCLayer.m	2010-08-24 07:54:00.000000000 -0700
+--- cocos2d/CCLayer.m	2010-08-24 17:49:52.000000000 -0700
+***************
+*** 49,55 ****
+  		[self setContentSize:s];
+  		self.isRelativeAnchorPoint = NO;
+  
+- 		isTouchEnabled = NO;
+  		isAccelerometerEnabled = NO;
+  	}
+  	
+--- 49,54 ----
+***************
+*** 81,95 ****
+  	}
+  }
+  
+- -(BOOL) isTouchEnabled
+- {
+- 	return isTouchEnabled;
+- }
+- 
+  -(void) setIsTouchEnabled:(BOOL)enabled
+  {
+  	if( isTouchEnabled != enabled ) {
+! 		isTouchEnabled = enabled;
+  		if( isRunning_ ) {
+  			if( enabled )
+  				[self registerWithTouchDispatcher];
+--- 80,90 ----
+  	}
+  }
+  
+  -(void) setIsTouchEnabled:(BOOL)enabled
+  {
+  	if( isTouchEnabled != enabled ) {
+!     // CCNode needs to remove any gesture recognizers
+! 		[super setIsTouchEnabled:enabled];
+  		if( isRunning_ ) {
+  			if( enabled )
+  				[self registerWithTouchDispatcher];
+diff -c /Users/joe/cocos2d/CCNode.h cocos2d/CCNode.h
+*** /Users/joe/cocos2d/CCNode.h	2010-08-24 07:54:00.000000000 -0700
+--- cocos2d/CCNode.h	2010-08-24 17:49:52.000000000 -0700
+***************
+*** 32,37 ****
+--- 32,38 ----
+  #import "CCProtocols.h"
+  #import "ccConfig.h"
+  #import "Support/CCArray.h"
++ #import "CCGestureRecognizer.h"
+  
+  enum {
+  	kCCNodeTagInvalid = -1,
+***************
+*** 159,164 ****
+--- 160,169 ----
+  #if	CC_NODE_TRANSFORM_USING_AFFINE_MATRIX
+  	BOOL isTransformGLDirty_:1;
+  #endif
++   
++   CCArray* gestureRecognizers_;
++   CGSize touchableArea_;
++   BOOL isTouchEnabled;
+  }
+  
+  /** The z order of the node relative to it's "brothers": children of the same parent */
+***************
+*** 436,441 ****
+--- 441,467 ----
+   */
+  -(void) pauseSchedulerAndActions;
+  
++ -(void) addGestureRecognizer:(CCGestureRecognizer*)gestureRecognizer;
++ -(void) removeGestureRecognizer:(CCGestureRecognizer*)gestureRecognizer;
++ -(void) stopAllGestureRecognizers;
++ -(void) startAllGestureRecognizers;
++ 
++ /*  used to see if a touch is in a nodes touchAble area, if the area isn't set
++  the content size is used */
++ -(BOOL) isPointInArea:(CGPoint)pt;
++ -(BOOL) isNodeInTreeTouched:(CGPoint)pt;
++ 
++ /* property for getting/setting touchable area */
++ @property(nonatomic,assign) CGSize touchableArea;
++ @property(nonatomic,readonly) CCArray *gestureRecognizers;
++ 
++ /** whether or not it will receive Touch events.
++  You can enable / disable touch events with this property.
++  Only the touches of this node will be affected. This "method" is not propagated to it's children.
++  @since v0.8.1
++  */
++ @property(nonatomic,assign) BOOL isTouchEnabled;
++ 
+  // transformation methods
+  
+  /** Returns the local affine transform matrix
+diff -c /Users/joe/cocos2d/CCNode.m cocos2d/CCNode.m
+*** /Users/joe/cocos2d/CCNode.m	2010-08-24 07:54:00.000000000 -0700
+--- cocos2d/CCNode.m	2010-08-24 17:47:13.000000000 -0700
+***************
+*** 63,69 ****
+  @synthesize zOrder=zOrder_;
+  @synthesize tag=tag_;
+  @synthesize vertexZ = vertexZ_;
+! @synthesize isRunning=isRunning_;
+  
+  #pragma mark CCNode - Transform related properties
+  
+--- 63,69 ----
+  @synthesize zOrder=zOrder_;
+  @synthesize tag=tag_;
+  @synthesize vertexZ = vertexZ_;
+! @synthesize gestureRecognizers = gestureRecognizers_;
+  
+  #pragma mark CCNode - Transform related properties
+  
+***************
+*** 216,221 ****
+--- 216,225 ----
+  		
+  		// userData is always inited as nil
+  		userData = nil;
++     
++     // lazy allocation
++     gestureRecognizers_ = nil;
++     isTouchEnabled = NO;
+  	}
+  	
+  	return self;
+***************
+*** 576,581 ****
+--- 580,588 ----
+  
+  -(void) onEnter
+  {
++   if( isTouchEnabled )
++     [self startAllGestureRecognizers];
++   
+  	[children_ makeObjectsPerformSelector:@selector(onEnter)];
+  	
+  	[self resumeSchedulerAndActions];
+***************
+*** 590,595 ****
+--- 597,604 ----
+  
+  -(void) onExit
+  {
++   [self stopAllGestureRecognizers];
++   
+  	[self pauseSchedulerAndActions];
+  	
+  	isRunning_ = NO;	
+***************
+*** 691,696 ****
+--- 700,848 ----
+  	[[CCActionManager sharedManager] pauseTarget:self];
+  }
+  
++ #pragma mark Gesture Recognition
++ 
++ -(BOOL) isRunning
++ {
++   return isRunning_;
++ }
++ 
++ -(void) setIsRunning:(BOOL)running
++ {
++   if( isRunning_ != running )
++   {
++     isRunning_ = running;
++     if( isRunning_ && isTouchEnabled )
++       [self startAllGestureRecognizers];
++     else
++       [self stopAllGestureRecognizers];
++   }
++ }
++ 
++ - (void)addGestureRecognizer:(CCGestureRecognizer*)gestureRecognizer
++ {
++   if( ! gestureRecognizers_ )
++ 		gestureRecognizers_ = [[CCArray alloc] initWithCapacity:4];
++   
++   [gestureRecognizers_ addObject:gestureRecognizer];
++   gestureRecognizer.node = self;
++   
++   // if we are running we add the recognizer to the view right now
++   // if not we let the one enter take care of it since we don't
++   // want recognizers going off when the node isn't active
++   if( isRunning_ && isTouchEnabled )
++     [[CCDirector sharedDirector].openGLView addGestureRecognizer:gestureRecognizer.gestureRecognizer];
++ }
++ 
++ - (void)removeGestureRecognizer:(CCGestureRecognizer*)gestureRecognizer
++ {
++   [gestureRecognizers_ removeObject:gestureRecognizer];
++   // this is a sanity check to make sure that someone didn't add the
++   // same gestureRecognizer to different nodes
++   if( gestureRecognizer.node == self )
++     [[CCDirector sharedDirector].openGLView removeGestureRecognizer:gestureRecognizer.gestureRecognizer];
++ }
++ 
++ - (void)stopAllGestureRecognizers
++ {
++   CCGestureRecognizer* recognizer;
++ 	CCARRAY_FOREACH(gestureRecognizers_, recognizer)
++   {
++     if( recognizer.node == self )
++       [[CCDirector sharedDirector].openGLView removeGestureRecognizer:recognizer.gestureRecognizer];
++   }
++ }
++ 
++ -(void) startAllGestureRecognizers
++ {
++   CCGestureRecognizer* recognizer;
++ 	CCARRAY_FOREACH(gestureRecognizers_, recognizer)
++   {
++     if( recognizer.node == self )
++       [[CCDirector sharedDirector].openGLView addGestureRecognizer:recognizer.gestureRecognizer];
++   }
++ }
++ 
++ -(BOOL) isPointInArea:(CGPoint)pt
++ {
++   if( visible_ == NO )
++     return NO;
++   
++   /*  convert the point to the nodes local coordinate system to make it
++    easier to compare against the area the node occupies*/
++   pt = [self convertToNodeSpace:pt];
++   
++   // we have to take the anchor point into account for checking
++   CGRect rect;
++   /*  we should be able to use touchableArea here, even if a node doesn't set
++    this, it will return the contentArea.  */
++   rect.size = self.touchableArea;
++   CGPoint anchor = anchorPoint_;
++   
++   // we pretty much need to undo the anchor to get our rect to start at the lower left
++   anchor.x = 0.5f - anchor.x;
++   anchor.y = 0.5f - anchor.y;
++   
++   rect.origin = CGPointMake( -(rect.size.width*anchor.x), -(rect.size.height*anchor.y) );
++   
++   if( CGRectContainsPoint(rect,pt) )
++     return YES;
++   return NO;
++ }
++ 
++ -(BOOL) isNodeInTreeTouched:(CGPoint)pt
++ {
++   if( [self isPointInArea:pt] )
++     return YES;
++   
++   BOOL rslt = NO;
++   CCNode* child;
++   CCARRAY_FOREACH(children_, child )
++   {
++     if( [child isNodeInTreeTouched:pt] )
++     {
++       rslt = YES;
++       break;
++     }
++   }
++   return rslt;
++ }
++ 
++ -(CGSize) touchableArea
++ {
++   // we use content size if touchable area is 0
++   if( touchableArea_.width != 0.0f ||
++       touchableArea_.height != 0.0f )
++     return touchableArea_;
++   else
++     return contentSize_;
++ }
++ 
++ -(void) setTouchableArea:(CGSize)area
++ {
++ 	touchableArea_ = area;
++ }
++ 
++ -(BOOL) isTouchEnabled
++ {
++ 	return isTouchEnabled;
++ }
++ 
++ -(void) setIsTouchEnabled:(BOOL)enabled
++ {
++   if( isTouchEnabled != enabled )
++   {
++     isTouchEnabled = enabled;
++     CCGestureRecognizer* recognizer;
++     CCARRAY_FOREACH(gestureRecognizers_, recognizer)
++     {
++       // just an extra check
++       if( recognizer.node == self )
++         recognizer.gestureRecognizer.enabled = isTouchEnabled;
++     }
++   }
++ }
++ 
+  #pragma mark CCNode Transform
+  
+  - (CGAffineTransform)nodeToParentTransform
+Common subdirectories: /Users/joe/cocos2d/Support and cocos2d/Support
+diff -c /Users/joe/cocos2d/cocos2d.h cocos2d/cocos2d.h
+*** /Users/joe/cocos2d/cocos2d.h	2010-08-24 07:54:00.000000000 -0700
+--- cocos2d/cocos2d.h	2010-08-24 17:51:38.000000000 -0700
+***************
+*** 104,110 ****
+  #import "CCRadialTransition.h"
+  #import "CCProgressTimerActions.h"
+  #import "CCPropertyAction.h"
+! 
+  //
+  // cocos2d macros
+  //
+--- 104,110 ----
+  #import "CCRadialTransition.h"
+  #import "CCProgressTimerActions.h"
+  #import "CCPropertyAction.h"
+! #import "CCGestureRecognizer.h"
+  //
+  // cocos2d macros
+  //
