@@ -1,17 +1,29 @@
-#import <UIKit/UIKit.h>
+//
+//  CCGestureRecognizer.h
+//  cocos
+//
+//  Created by Joe Allen on 7/11/10.
+//  Copyright 2010 Glaiveware LLC. All rights reserved.
+//
+
 #import "ccTypes.h"
+#import "CCNode.h"
+#import <UIKit/UIKit.h>
+
+#ifndef __CCGestureRecognizer_H__
+#define __CCGestureRecognizer_H__
 
 @class CCNode;
 
-@interface CCGestureRecognizer : NSObject <UIGestureRecognizerDelegate>
+@interface CCGestureRecognizer : NSObject <UIGestureRecognizerDelegate,NSCoding>
 {
-  UIGestureRecognizer* gestureRecognizer_;
-  CCNode* node_;
+  UIGestureRecognizer* m_gestureRecognizer;
+  CCNode* m_node;
   
-  id<UIGestureRecognizerDelegate> delegate_;
+  id<UIGestureRecognizerDelegate> m_delegate;
   
-  id target_;
-  SEL callback_;
+  id m_target;
+  SEL m_callback;
 }
 
 @property(nonatomic,readonly) UIGestureRecognizer* gestureRecognizer;
@@ -30,3 +42,5 @@
 // this is the function the gesture recognizer will callback and we will add our info onto it
 - (void) callback:(UIGestureRecognizer*)recognizer;
 @end
+
+#endif  // end of __CCGestureRecognizer_H__
