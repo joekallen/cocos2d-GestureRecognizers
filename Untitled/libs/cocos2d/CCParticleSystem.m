@@ -42,7 +42,7 @@
 //
 
 // opengl
-#import <OpenGLES/ES1/gl.h>
+#import "Platforms/CCGL.h"
 
 // cocos2d
 #import "ccConfig.h"
@@ -84,11 +84,9 @@
 }
 
 -(id) init {
-	NSException* myException = [NSException
-								exceptionWithName:@"Particle.init"
-								reason:@"Particle.init shall not be called. Use initWithTotalParticles instead."
-								userInfo:nil];
-	@throw myException;	
+	NSAssert(NO, @"CCParticleSystem: Init not supported.");
+	[self release];
+	return nil;	
 }
 
 -(id) initWithFile:(NSString *)plistFile
@@ -102,7 +100,7 @@
 
 -(id) initWithDictionary:(NSDictionary *)dictionary
 {
-	int maxParticles = [[dictionary valueForKey:@"maxParticles"] intValue];
+	NSUInteger maxParticles = [[dictionary valueForKey:@"maxParticles"] intValue];
 	// self, not super
 	if ((self=[self initWithTotalParticles:maxParticles] ) ) {
 		
@@ -154,7 +152,7 @@
 		// position
 		float x = [[dictionary valueForKey:@"sourcePositionx"] floatValue];
 		float y = [[dictionary valueForKey:@"sourcePositiony"] floatValue];
-		position_ = ccp(x,y);
+		self.position = ccp(x,y);
 		posVar.x = [[dictionary valueForKey:@"sourcePositionVariancex"] floatValue];
 		posVar.y = [[dictionary valueForKey:@"sourcePositionVariancey"] floatValue];
 				
@@ -215,25 +213,33 @@
 		// texture		
 		// Try to get the texture from the cache
 		NSString *textureName = [dictionary valueForKey:@"textureFileName"];
-		NSString *textureData = [dictionary valueForKey:@"textureImageData"];
 
 		self.texture = [[CCTextureCache sharedTextureCache] addImage:textureName];
+
+		NSString *textureData = [dictionary valueForKey:@"textureImageData"];
 
 		if ( ! texture_ && textureData) {
 			
 			// if it fails, try to get it from the base64-gzipped data			
 			unsigned char *buffer = NULL;
-			int len = base64Decode((unsigned char*)[textureData UTF8String], [textureData length], &buffer);
+			NSUInteger len = base64Decode((unsigned char*)[textureData UTF8String], [textureData length], &buffer);
 			NSAssert( buffer != NULL, @"CCParticleSystem: error decoding textureImageData");
 				
 			unsigned char *deflated = NULL;
-			int deflatedLen = inflateMemory(buffer, len, &deflated);
+			NSUInteger deflatedLen = inflateMemory(buffer, len, &deflated);
 			free( buffer );
 				
 			NSAssert( deflated != NULL, @"CCParticleSystem: error ungzipping textureImageData");
 			NSData *data = [[NSData alloc] initWithBytes:deflated length:deflatedLen];
-			UIImage *image = [[UIImage alloc] initWithData:data];
 			
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+			UIImage *image = [[UIImage alloc] initWithData:data];
+#elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
+			NSBitmapImageRep *image = [[NSBitmapImageRep alloc] initWithData:data];
+#endif
+			
+			free(deflated); deflated = NULL;
+
 			self.texture = [[CCTextureCache sharedTextureCache] addCGImage:[image CGImage] forKey:textureName];
 			[data release];
 			[image release];
@@ -330,7 +336,9 @@
 
 	// position
 	particle->pos.x = centerOfGravity.x + posVar.x * CCRANDOM_MINUS1_1();
+	particle->pos.x *= CC_CONTENT_SCALE_FACTOR();
 	particle->pos.y = centerOfGravity.y + posVar.y * CCRANDOM_MINUS1_1();
+	particle->pos.y *= CC_CONTENT_SCALE_FACTOR();
 	
 	// Color
 	ccColor4F start;
@@ -353,6 +361,7 @@
 	
 	// size
 	float startS = MAX(0, startSize + startSizeVar * CCRANDOM_MINUS1_1() ); // no negative size
+	startS *= CC_CONTENT_SCALE_FACTOR();
 	
 	particle->size = startS;
 	if( endSize == kCCParticleStartSizeEqualToEndSize )
@@ -360,6 +369,7 @@
 	else {
 		float endS = endSize + endSizeVar * CCRANDOM_MINUS1_1();
 		endS = MAX(0, endS);
+		endS *= CC_CONTENT_SCALE_FACTOR();
 		particle->deltaSize = (endS - startS) / particle->timeToLive;
 	}
 	
@@ -370,8 +380,10 @@
 	particle->deltaRotation = (endA - startA) / particle->timeToLive;
 	
 	// position
-	if( positionType_ == kCCPositionTypeFree )
-		particle->startPos = [self convertToWorldSpace:CGPointZero];
+	if( positionType_ == kCCPositionTypeFree ) {
+		CGPoint p = [self convertToWorldSpace:CGPointZero];
+		particle->startPos = ccp( p.x * CC_CONTENT_SCALE_FACTOR(), p.y * CC_CONTENT_SCALE_FACTOR() );
+	}
 	
 	// direction
 	float a = CC_DEGREES_TO_RADIANS( angle + angleVar * CCRANDOM_MINUS1_1() );	
@@ -384,15 +396,19 @@
 		v.y = sinf( a );
 		v.x = cosf( a );
 		float s = mode.A.speed + mode.A.speedVar * CCRANDOM_MINUS1_1();
+		s *= CC_CONTENT_SCALE_FACTOR();
 		
 		// direction
 		particle->mode.A.dir = ccpMult( v, s );
 		
 		// radial accel
 		particle->mode.A.radialAccel = mode.A.radialAccel + mode.A.radialAccelVar * CCRANDOM_MINUS1_1();
+		particle->mode.A.radialAccel *= CC_CONTENT_SCALE_FACTOR();
 		
 		// tangential accel
 		particle->mode.A.tangentialAccel = mode.A.tangentialAccel + mode.A.tangentialAccelVar * CCRANDOM_MINUS1_1();
+		particle->mode.A.tangentialAccel *= CC_CONTENT_SCALE_FACTOR();
+
 	}
 	
 	// Mode Radius: B
@@ -401,6 +417,9 @@
 		float startRadius = mode.B.startRadius + mode.B.startRadiusVar * CCRANDOM_MINUS1_1();
 		float endRadius = mode.B.endRadius + mode.B.endRadiusVar * CCRANDOM_MINUS1_1();
 
+		startRadius *= CC_CONTENT_SCALE_FACTOR();
+		endRadius *= CC_CONTENT_SCALE_FACTOR();
+		
 		particle->mode.B.radius = startRadius;
 
 		if( mode.B.endRadius == kCCParticleStartRadiusEqualToEndRadius )
@@ -410,7 +429,6 @@
 	
 		particle->mode.B.angle = a;
 		particle->mode.B.degreesPerSecond = CC_DEGREES_TO_RADIANS(mode.B.rotatePerSecond + mode.B.rotatePerSecondVar * CCRANDOM_MINUS1_1());
-		
 	}	
 }
 
@@ -461,8 +479,11 @@
 	
 	
 	CGPoint currentPosition = CGPointZero;
-	if( positionType_ == kCCPositionTypeFree )
+	if( positionType_ == kCCPositionTypeFree ) {
 		currentPosition = [self convertToWorldSpace:CGPointZero];
+		currentPosition.x *= CC_CONTENT_SCALE_FACTOR();
+		currentPosition.y *= CC_CONTENT_SCALE_FACTOR();
+	}
 	
 	while( particleIdx < particleCount )
 	{

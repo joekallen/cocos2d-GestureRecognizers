@@ -23,16 +23,19 @@
  * THE SOFTWARE.
  */
 
+#import <Availability.h>
 
-#import <OpenGLES/ES1/gl.h>
-
+#import "Platforms/CCGL.h"
 #import "CCAction.h"
 #import "ccTypes.h"
 #import "CCTexture2D.h"
 #import "CCProtocols.h"
 #import "ccConfig.h"
 #import "Support/CCArray.h"
-#import "CCGestureRecognizer.h"
+
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+@class CCGestureRecognizer;
+#endif
 
 enum {
 	kCCNodeTagInvalid = -1,
@@ -105,6 +108,7 @@ enum {
 	
 	// position of the node
 	CGPoint position_;
+	CGPoint	positionInPixels_;
 
 	// is visible
 	BOOL visible_;
@@ -120,6 +124,7 @@ enum {
 	
 	// untransformed size of the node
 	CGSize	contentSize_;
+	CGSize	contentSizeInPixels_;
 	
 	// transform
 	CGAffineTransform transform_, inverse_;
@@ -137,7 +142,7 @@ enum {
 	CCGridBase *grid_;
 	
 	// z-order value
-	int zOrder_;
+	NSInteger zOrder_;
 	
 	// array of children
 	CCArray *children_;
@@ -146,7 +151,7 @@ enum {
 	CCNode *parent_;
 	
 	// a tag. any number you want to assign to the node
-	int tag_;
+	NSInteger tag_;
     
 	// user data field
 	void *userData;
@@ -160,14 +165,16 @@ enum {
 #if	CC_NODE_TRANSFORM_USING_AFFINE_MATRIX
 	BOOL isTransformGLDirty_:1;
 #endif
-  
+
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
   CCArray* gestureRecognizers_;
   CGSize touchableArea_;
-  BOOL isTouchEnabled;
+  BOOL isTouchEnabled_;
+#endif
 }
 
 /** The z order of the node relative to it's "brothers": children of the same parent */
-@property(nonatomic,readonly) int zOrder;
+@property(nonatomic,readonly) NSInteger zOrder;
 /** The real openGL Z vertex.
  Differences between openGL Z vertex and cocos2d Z order:
    - OpenGL Z modifies the Z vertex, and not the Z order in the relation between parent-children
@@ -185,14 +192,15 @@ enum {
 @property(nonatomic,readwrite,assign) float scaleX;
 /** The scale factor of the node. 1.0 is the default scale factor. It only modifies the Y scale factor. */
 @property(nonatomic,readwrite,assign) float scaleY;
-/** Position (x,y) of the node in OpenGL coordinates. (0,0) is the left-bottom corner. */
+/** Position (x,y) of the node in points. (0,0) is the left-bottom corner. */
 @property(nonatomic,readwrite,assign) CGPoint position;
+/** Position (x,y) of the node in points. (0,0) is the left-bottom corner. */
+@property(nonatomic,readwrite,assign) CGPoint positionInPixels;
 /** A CCCamera object that lets you move the node using a gluLookAt
 */
-
+@property(nonatomic,readonly) CCCamera* camera;
+/** Array of children */
 @property(nonatomic,readonly) CCArray *children;
-
- @property(nonatomic,readonly) CCCamera* camera;
 /** A CCGrid object that is used when applying effects */
 @property(nonatomic,readwrite,retain) CCGridBase* grid;
 /** Whether of not the node is visible. Default is YES */
@@ -210,12 +218,20 @@ enum {
  */
 @property(nonatomic,readonly) CGPoint anchorPointInPixels;
 
-/** The untransformed size of the node.
+/** The untransformed size of the node in Points
  The contentSize remains the same no matter the node is scaled or rotated.
  All nodes has a size. Layer and Scene has the same size of the screen.
  @since v0.8
  */
 @property (nonatomic,readwrite) CGSize contentSize;
+
+/** The untransformed size of the node in Pixels
+ The contentSize remains the same no matter the node is scaled or rotated.
+ All nodes has a size. Layer and Scene has the same size of the screen.
+ @since v0.8
+ */
+@property (nonatomic,readwrite) CGSize contentSizeInPixels;
+
 /** whether or not the node is running */
 @property(nonatomic,readonly) BOOL isRunning;
 /** A weak reference to the parent */
@@ -226,7 +242,7 @@ enum {
  */
 @property(nonatomic,readwrite,assign) BOOL isRelativeAnchorPoint;
 /** A tag used to identify the node easily */
-@property(nonatomic,readwrite,assign) int tag;
+@property(nonatomic,readwrite,assign) NSInteger tag;
 /** A custom user data pointer */
 @property(nonatomic,readwrite,assign) void *userData;
 
@@ -347,12 +363,21 @@ enum {
  */
 -(void) transformAncestors;
 
-/** returns a "local" axis aligned bounding box of the node.
+/** returns a "local" axis aligned bounding box of the node in points.
  The returned box is relative only to its parent.
+ The returned box is in Points.
  
  @since v0.8.2
  */
 - (CGRect) boundingBox;
+
+/** returns a "local" axis aligned bounding box of the node in pixels.
+ The returned box is relative only to its parent.
+ The returned box is in Points.
+ 
+ @since v0.99.5
+ */
+- (CGRect) boundingBoxInPixels;
 
 
 // actions
@@ -441,6 +466,7 @@ enum {
  */
 -(void) pauseSchedulerAndActions;
 
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 -(void) addGestureRecognizer:(CCGestureRecognizer*)gestureRecognizer;
 -(void) removeGestureRecognizer:(CCGestureRecognizer*)gestureRecognizer;
 -(void) stopAllGestureRecognizers;
@@ -461,6 +487,7 @@ enum {
  @since v0.8.1
  */
 @property(nonatomic,assign) BOOL isTouchEnabled;
+#endif
 
 // transformation methods
 
@@ -498,6 +525,8 @@ enum {
  @since v0.7.1
  */
 - (CGPoint)convertToWorldSpaceAR:(CGPoint)nodePoint;
+
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 /** convenience methods which take a UITouch instead of CGPoint
  @since v0.7.1
  */
@@ -506,4 +535,5 @@ enum {
  @since v0.7.1
  */
 - (CGPoint)convertTouchToNodeSpaceAR:(UITouch *)touch;
+#endif // __IPHONE_OS_VERSION_MAX_ALLOWED
 @end

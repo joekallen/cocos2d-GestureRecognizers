@@ -23,25 +23,30 @@
  * THE SOFTWARE.
  */
 
-
-
-#import "ccConfig.h"
 #import "CCNode.h"
-#import "CCCamera.h"
 #import "CCGrid.h"
-#import "CCScheduler.h"
-#import "ccMacros.h"
 #import "CCDirector.h"
 #import "CCActionManager.h"
+#import "CCCamera.h"
+#import "CCScheduler.h"
+#import "ccConfig.h"
+#import "ccMacros.h"
 #import "Support/CGPointExtension.h"
 #import "Support/ccCArray.h"
 #import "Support/TransformUtils.h"
+#import "ccMacros.h"
+
+#import <Availability.h>
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+#import "Platforms/iOS/CCDirectorIOS.h"
+#import "Platforms/iOS/CCGestureRecognizer.h"
+#endif
 
 
 #if CC_COCOSNODE_RENDER_SUBPIXEL
 #define RENDER_IN_SUBPIXEL
 #else
-#define RENDER_IN_SUBPIXEL (int)
+#define RENDER_IN_SUBPIXEL (NSInteger)
 #endif
 
 @interface CCNode (Private)
@@ -63,11 +68,14 @@
 @synthesize zOrder=zOrder_;
 @synthesize tag=tag_;
 @synthesize vertexZ = vertexZ_;
-@synthesize gestureRecognizers = gestureRecognizers_;
+@synthesize isRunning=isRunning_;
 
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+@synthesize gestureRecognizers = gestureRecognizers_;
+#endif
 #pragma mark CCNode - Transform related properties
 
-@synthesize rotation=rotation_, scaleX=scaleX_, scaleY=scaleY_, position=position_;
+@synthesize rotation=rotation_, scaleX=scaleX_, scaleY=scaleY_;
 @synthesize anchorPointInPixels=anchorPointInPixels_, isRelativeAnchorPoint=isRelativeAnchorPoint_;
 @synthesize userData;
 
@@ -99,9 +107,28 @@
 #endif	
 }
 
+-(CGPoint) position
+{
+	return position_;
+}
 -(void) setPosition: (CGPoint)newPosition
 {
 	position_ = newPosition;
+	positionInPixels_ = ccpMult( newPosition,  CC_CONTENT_SCALE_FACTOR() );
+	isTransformDirty_ = isInverseDirty_ = YES;
+#if CC_NODE_TRANSFORM_USING_AFFINE_MATRIX
+	isTransformGLDirty_ = YES;
+#endif	
+}
+
+-(CGPoint) positionInPixels
+{
+	return positionInPixels_;
+}
+-(void) setPositionInPixels:(CGPoint)newPosition
+{
+	position_ = ccpMult( newPosition, 1/CC_CONTENT_SCALE_FACTOR() );
+	positionInPixels_ = newPosition;
 	isTransformDirty_ = isInverseDirty_ = YES;
 #if CC_NODE_TRANSFORM_USING_AFFINE_MATRIX
 	isTransformGLDirty_ = YES;
@@ -121,7 +148,7 @@
 {
 	if( ! CGPointEqualToPoint(point, anchorPoint_) ) {
 		anchorPoint_ = point;
-		anchorPointInPixels_ = ccp( contentSize_.width * anchorPoint_.x, contentSize_.height * anchorPoint_.y );
+		anchorPointInPixels_ = ccp( contentSizeInPixels_.width * anchorPoint_.x, contentSizeInPixels_.height * anchorPoint_.y );
 		isTransformDirty_ = isInverseDirty_ = YES;
 #if CC_NODE_TRANSFORM_USING_AFFINE_MATRIX
 		isTransformGLDirty_ = YES;
@@ -137,7 +164,8 @@
 {
 	if( ! CGSizeEqualToSize(size, contentSize_) ) {
 		contentSize_ = size;
-		anchorPointInPixels_ = ccp( contentSize_.width * anchorPoint_.x, contentSize_.height * anchorPoint_.y );
+		contentSizeInPixels_ = CGSizeMake( size.width * CC_CONTENT_SCALE_FACTOR(), size.height * CC_CONTENT_SCALE_FACTOR() );
+		anchorPointInPixels_ = ccp( contentSizeInPixels_.width * anchorPoint_.x, contentSizeInPixels_.height * anchorPoint_.y );
 		isTransformDirty_ = isInverseDirty_ = YES;
 #if CC_NODE_TRANSFORM_USING_AFFINE_MATRIX
 		isTransformGLDirty_ = YES;
@@ -149,11 +177,35 @@
 	return contentSize_;
 }
 
+-(void) setContentSizeInPixels:(CGSize)size
+{
+	if( ! CGSizeEqualToSize(size, contentSizeInPixels_) ) {
+		contentSize_ = CGSizeMake( size.width / CC_CONTENT_SCALE_FACTOR(), size.height / CC_CONTENT_SCALE_FACTOR() );
+		contentSizeInPixels_ = size;
+		anchorPointInPixels_ = ccp( contentSizeInPixels_.width * anchorPoint_.x, contentSizeInPixels_.height * anchorPoint_.y );
+		isTransformDirty_ = isInverseDirty_ = YES;
+#if CC_NODE_TRANSFORM_USING_AFFINE_MATRIX
+		isTransformGLDirty_ = YES;
+#endif		
+	}
+}
+-(CGSize) contentSizeInPixels
+{
+	return contentSizeInPixels_;
+}
+
 - (CGRect) boundingBox
 {
-	CGRect rect = CGRectMake(0, 0, contentSize_.width, contentSize_.height);
+	CGRect ret = [self boundingBoxInPixels];
+	return CC_RECT_PIXELS_TO_POINTS( ret );
+}
+
+- (CGRect) boundingBoxInPixels
+{
+	CGRect rect = CGRectMake(0, 0, contentSizeInPixels_.width, contentSizeInPixels_.height);
 	return CGRectApplyAffineTransform(rect, [self nodeToParentTransform]);
 }
+
 
 -(float) scale
 {
@@ -185,9 +237,9 @@
 		
 		rotation_ = 0.0f;
 		scaleX_ = scaleY_ = 1.0f;
-		position_ = CGPointZero;
+		positionInPixels_ = position_ = CGPointZero;
 		anchorPointInPixels_ = anchorPoint_ = CGPointZero;
-		contentSize_ = CGSizeZero;
+		contentSizeInPixels_ = contentSize_ = CGSizeZero;
 		
 		
 		// "whole screen" objects. like Scenes and Layers, should set isRelativeAnchorPoint to NO
@@ -216,10 +268,11 @@
 		
 		// userData is always inited as nil
 		userData = nil;
-    
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
     // lazy allocation
     gestureRecognizers_ = nil;
-    isTouchEnabled = NO;
+    isTouchEnabled_ = NO;
+#endif
 	}
 	
 	return self;
@@ -229,6 +282,7 @@
 {
 	// actions
 	[self stopAllActions];
+
 	[self unscheduleAllSelectors];
 	
 	// timers
@@ -415,7 +469,7 @@
 // helper used by reorderChild & add
 -(void) insertChild:(CCNode*)child z:(int)z
 {
-	int index=0;
+	NSUInteger index=0;
 	BOOL added = NO;
 	CCNode *a;
 	CCARRAY_FOREACH(children_, a){
@@ -466,12 +520,12 @@
 		[grid_ beforeDraw];
 		[self transformAncestors];
 	}
-	
+
 	[self transform];
 	
 	if(children_) {
 		ccArray *arrayData = children_->data;
-		int i=0;
+		NSUInteger i=0;
 		
 		// draw children zOrder < 0
 		for( ; i < arrayData->num; i++ ) {
@@ -492,7 +546,7 @@
 		}
 
 	} else
-		[self draw];	
+		[self draw];
 	
 	if ( grid_ && grid_.active)
 		[grid_ afterDraw:self];
@@ -528,16 +582,17 @@
 		glTranslatef(0, 0, vertexZ_);
 	
 	// XXX: Expensive calls. Camera should be integrated into the cached affine matrix
-	if ( camera_ && !(grid_ && grid_.active) ) {
+	if ( camera_ && !(grid_ && grid_.active) )
+	{
 		BOOL translate = (anchorPointInPixels_.x != 0.0f || anchorPointInPixels_.y != 0.0f);
 		
 		if( translate )
-			glTranslatef(RENDER_IN_SUBPIXEL(anchorPointInPixels_.x), RENDER_IN_SUBPIXEL(anchorPointInPixels_.y), 0);
+			ccglTranslate(RENDER_IN_SUBPIXEL(anchorPointInPixels_.x), RENDER_IN_SUBPIXEL(anchorPointInPixels_.y), 0);
 		
 		[camera_ locate];
 		
 		if( translate )
-			glTranslatef(RENDER_IN_SUBPIXEL(-anchorPointInPixels_.x), RENDER_IN_SUBPIXEL(-anchorPointInPixels_.y), 0);
+			ccglTranslate(RENDER_IN_SUBPIXEL(-anchorPointInPixels_.x), RENDER_IN_SUBPIXEL(-anchorPointInPixels_.y), 0);
 	}
 	
 	
@@ -551,9 +606,9 @@
 		glTranslatef( RENDER_IN_SUBPIXEL(-anchorPointInPixels_.x), RENDER_IN_SUBPIXEL(-anchorPointInPixels_.y), 0);
 	
 	if (anchorPointInPixels_.x != 0 || anchorPointInPixels_.y != 0)
-		glTranslatef( RENDER_IN_SUBPIXEL(position_.x + anchorPointInPixels_.x), RENDER_IN_SUBPIXEL(position_.y + anchorPointInPixels_.y), vertexZ_);
-	else if ( position_.x !=0 || position_.y !=0 || vertexZ_ != 0)
-		glTranslatef( RENDER_IN_SUBPIXEL(position_.x), RENDER_IN_SUBPIXEL(position_.y), vertexZ_ );
+		glTranslatef( RENDER_IN_SUBPIXEL(positionInPixels_.x + anchorPointInPixels_.x), RENDER_IN_SUBPIXEL(positionInPixels_.y + anchorPointInPixels_.y), vertexZ_);
+	else if ( positionInPixels_.x !=0 || positionInPixels_.y !=0 || vertexZ_ != 0)
+		glTranslatef( RENDER_IN_SUBPIXEL(positionInPixels_.x), RENDER_IN_SUBPIXEL(positionInPixels_.y), vertexZ_ );
 	
 	// rotate
 	if (rotation_ != 0.0f )
@@ -580,11 +635,12 @@
 
 -(void) onEnter
 {
-  if( isTouchEnabled )
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+  if( isTouchEnabled_ )
     [self startAllGestureRecognizers];
-  
-	[children_ makeObjectsPerformSelector:@selector(onEnter)];
-	
+#endif
+
+	[children_ makeObjectsPerformSelector:@selector(onEnter)];	
 	[self resumeSchedulerAndActions];
 	
 	isRunning_ = YES;
@@ -597,10 +653,11 @@
 
 -(void) onExit
 {
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
   [self stopAllGestureRecognizers];
-  
+#endif
+
 	[self pauseSchedulerAndActions];
-	
 	isRunning_ = NO;	
 	
 	[children_ makeObjectsPerformSelector:@selector(onExit)];
@@ -644,8 +701,7 @@
 	return [[CCActionManager sharedManager] numberOfRunningActionsInTarget:self];
 }
 
-
-#pragma mark CCNode - Callbacks
+#pragma mark CCNode - Scheduler
 
 -(void) scheduleUpdate
 {
@@ -691,6 +747,7 @@
 - (void) resumeSchedulerAndActions
 {
 	[[CCScheduler sharedScheduler] resumeTarget:self];
+	
 	[[CCActionManager sharedManager] resumeTarget:self];
 }
 
@@ -700,8 +757,9 @@
 	[[CCActionManager sharedManager] pauseTarget:self];
 }
 
-#pragma mark Gesture Recognition
 
+#pragma mark Gesture Recognition
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 -(BOOL) isRunning
 {
   return isRunning_;
@@ -712,7 +770,7 @@
   if( isRunning_ != running )
   {
     isRunning_ = running;
-    if( isRunning_ && isTouchEnabled )
+    if( isRunning_ && isTouchEnabled_ )
       [self startAllGestureRecognizers];
     else
       [self stopAllGestureRecognizers];
@@ -730,7 +788,7 @@
   // if we are running we add the recognizer to the view right now
   // if not we let the one enter take care of it since we don't
   // want recognizers going off when the node isn't active
-  if( isRunning_ && isTouchEnabled )
+  if( isRunning_ && isTouchEnabled_ )
     [[CCDirector sharedDirector].openGLView addGestureRecognizer:gestureRecognizer.gestureRecognizer];
 }
 
@@ -825,23 +883,24 @@
 
 -(BOOL) isTouchEnabled
 {
-	return isTouchEnabled;
+	return isTouchEnabled_;
 }
 
 -(void) setIsTouchEnabled:(BOOL)enabled
 {
-  if( isTouchEnabled != enabled )
+  if( isTouchEnabled_ != enabled )
   {
-    isTouchEnabled = enabled;
+    isTouchEnabled_ = enabled;
     CCGestureRecognizer* recognizer;
     CCARRAY_FOREACH(gestureRecognizers_, recognizer)
     {
       // just an extra check
       if( recognizer.node == self )
-        recognizer.gestureRecognizer.enabled = isTouchEnabled;
+        recognizer.gestureRecognizer.enabled = isTouchEnabled_;
     }
   }
 }
+#endif
 
 #pragma mark CCNode Transform
 
@@ -854,8 +913,8 @@
 		if ( !isRelativeAnchorPoint_ && !CGPointEqualToPoint(anchorPointInPixels_, CGPointZero) )
 			transform_ = CGAffineTransformTranslate(transform_, anchorPointInPixels_.x, anchorPointInPixels_.y);
 		
-		if( ! CGPointEqualToPoint(position_, CGPointZero) )
-			transform_ = CGAffineTransformTranslate(transform_, position_.x, position_.y);
+		if( ! CGPointEqualToPoint(positionInPixels_, CGPointZero) )
+			transform_ = CGAffineTransformTranslate(transform_, positionInPixels_.x, positionInPixels_.y);
 		if( rotation_ != 0 )
 			transform_ = CGAffineTransformRotate(transform_, -CC_DEGREES_TO_RADIANS(rotation_));
 		if( ! (scaleX_ == 1 && scaleY_ == 1) ) 
@@ -902,7 +961,9 @@
 
 - (CGPoint)convertToWorldSpace:(CGPoint)nodePoint
 {
-	return CGPointApplyAffineTransform(nodePoint, [self nodeToWorldTransform]);
+	CGPoint ret = CGPointApplyAffineTransform(nodePoint, [self nodeToWorldTransform]);
+	ret = ccpMult( ret, 1/CC_CONTENT_SCALE_FACTOR() );
+	return ret;
 }
 
 - (CGPoint)convertToNodeSpaceAR:(CGPoint)worldPoint
@@ -925,6 +986,8 @@
 
 // convenience methods which take a UITouch instead of CGPoint
 
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+
 - (CGPoint)convertTouchToNodeSpace:(UITouch *)touch
 {
 	CGPoint point = [touch locationInView: [touch view]];
@@ -938,5 +1001,7 @@
 	point = [[CCDirector sharedDirector] convertToGL: point];
 	return [self convertToNodeSpaceAR:point];
 }
+#endif // __IPHONE_OS_VERSION_MAX_ALLOWED
+
 
 @end

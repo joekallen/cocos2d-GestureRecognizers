@@ -23,9 +23,11 @@
  *
  */
 
+#import <Availability.h>
 #import "CCRenderTexture.h"
 #import "CCDirector.h"
 #import "ccMacros.h"
+#import "Support/ccUtils.h"
 
 @implementation CCRenderTexture
 
@@ -41,27 +43,30 @@
 	self = [super init];
 	if (self)
 	{
-		glGetIntegerv(GL_FRAMEBUFFER_BINDING_OES, &oldFBO_);
+		w *= CC_CONTENT_SCALE_FACTOR();
+		h *= CC_CONTENT_SCALE_FACTOR();
+
+		glGetIntegerv(CC_GL_FRAMEBUFFER_BINDING, &oldFBO_);
 		CCTexture2DPixelFormat format = kCCTexture2DPixelFormat_RGBA8888;  
-		// textures must be power of two squared
-		int pow = 8;
-		while (pow < w || pow < h) pow*=2;
-    
-		void *data = malloc((int)(pow * pow * 4));
-		memset(data, 0, (int)(pow * pow * 4));
-		texture_ = [[CCTexture2D alloc] initWithData:data pixelFormat:format pixelsWide:pow pixelsHigh:pow contentSize:CGSizeMake(w, h)];
+		// textures must be power of two
+		NSUInteger powW = ccNextPOT(w);
+		NSUInteger powH = ccNextPOT(h);
+		
+		void *data = malloc((int)(powW * powH * 4));
+		memset(data, 0, (int)(powW * powH * 4));
+		texture_ = [[CCTexture2D alloc] initWithData:data pixelFormat:format pixelsWide:powW pixelsHigh:powH contentSize:CGSizeMake(w, h)];
 		free( data );
     
 		// generate FBO
-		glGenFramebuffersOES(1, &fbo_);
-		glBindFramebufferOES(GL_FRAMEBUFFER_OES, fbo_);
+		ccglGenFramebuffers(1, &fbo_);
+		ccglBindFramebuffer(CC_GL_FRAMEBUFFER, fbo_);
     
 		// associate texture with FBO
-		glFramebufferTexture2DOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_TEXTURE_2D, texture_.name, 0);
+		ccglFramebufferTexture2D(CC_GL_FRAMEBUFFER, CC_GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_.name, 0);
     
 		// check if it worked (probably worth doing :) )
-		GLuint status = glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES);
-		if (status != GL_FRAMEBUFFER_COMPLETE_OES)
+		GLuint status = ccglCheckFramebufferStatus(CC_GL_FRAMEBUFFER);
+		if (status != CC_GL_FRAMEBUFFER_COMPLETE)
 		{
 			[NSException raise:@"Render Texture" format:@"Could not attach texture to framebuffer"];
 		}
@@ -74,7 +79,7 @@
 		// issue #937
 		[sprite_ setBlendFunc:(ccBlendFunc){GL_ONE, GL_ONE_MINUS_SRC_ALPHA}];
 
-		glBindFramebufferOES(GL_FRAMEBUFFER_OES, oldFBO_);
+		ccglBindFramebuffer(CC_GL_FRAMEBUFFER, oldFBO_);
 	}
 	return self;
 }
@@ -82,7 +87,7 @@
 -(void)dealloc
 {
 //	[self removeAllChildrenWithCleanup:YES];
-	glDeleteFramebuffersOES(1, &fbo_);
+	ccglDeleteFramebuffers(1, &fbo_);
 	[super dealloc];
 }
 
@@ -92,29 +97,29 @@
 	// Save the current matrix
 	glPushMatrix();
 	
-	CGSize texSize = [texture_ contentSize];
+	CGSize texSize = [texture_ contentSizeInPixels];
 
 	// Calculate the adjustment ratios based on the old and new projections
-	CGSize size = [[CCDirector sharedDirector] displaySize];
+	CGSize size = [[CCDirector sharedDirector] displaySizeInPixels];
 	float widthRatio = size.width / texSize.width;
 	float heightRatio = size.height / texSize.height;
 
 	// Adjust the orthographic propjection and viewport
-	glOrthof((float)-1.0 / widthRatio,  (float)1.0 / widthRatio, (float)-1.0 / heightRatio, (float)1.0 / heightRatio, -1,1);
+	ccglOrtho((float)-1.0 / widthRatio,  (float)1.0 / widthRatio, (float)-1.0 / heightRatio, (float)1.0 / heightRatio, -1,1);
 	glViewport(0, 0, texSize.width, texSize.height);
 
-	glGetIntegerv(GL_FRAMEBUFFER_BINDING_OES, &oldFBO_);
-	glBindFramebufferOES(GL_FRAMEBUFFER_OES, fbo_);//Will direct drawing to the frame buffer created above
+	glGetIntegerv(CC_GL_FRAMEBUFFER_BINDING, &oldFBO_);
+	ccglBindFramebuffer(CC_GL_FRAMEBUFFER, fbo_);//Will direct drawing to the frame buffer created above
 	
 	CC_ENABLE_DEFAULT_GL_STATES();	
 }
 
 -(void)end
 {
-	glBindFramebufferOES(GL_FRAMEBUFFER_OES, oldFBO_);
+	ccglBindFramebuffer(CC_GL_FRAMEBUFFER, oldFBO_);
 	// Restore the original matrix and viewport
 	glPopMatrix();
-	CGSize size = [[CCDirector sharedDirector] displaySize];
+	CGSize size = [[CCDirector sharedDirector] displaySizeInPixels];
 	glViewport(0, 0, size.width, size.height);
 
 	glColorMask(TRUE, TRUE, TRUE, TRUE);
@@ -130,6 +135,9 @@
 	[self end];
 }
 
+#pragma mark RenderTexture - Save Image
+
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 -(BOOL)saveBuffer:(NSString*)name
 {
 	return [self saveBuffer:name format:kCCImageFormatJPG];
@@ -156,8 +164,9 @@
 /* get buffer as UIImage */
 -(UIImage *)getUIImageFromBuffer
 {
-	int tx = texture_.contentSize.width;
-	int ty = texture_.contentSize.height;
+	CGSize s = [texture_ contentSizeInPixels];
+	int tx = s.width;
+	int ty = s.height;
   
 	int bitsPerComponent			= 8;
 	int bitsPerPixel				= 32;
@@ -233,4 +242,5 @@
   
 	return [image autorelease];
 }
+#endif // iphone
 @end

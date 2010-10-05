@@ -30,6 +30,7 @@
  * http://zwoptex.zwopple.com/
  */
 
+#import "Platforms/CCNS.h"
 #import "ccMacros.h"
 #import "CCTextureCache.h"
 #import "CCSpriteFrameCache.h"
@@ -134,26 +135,35 @@ static CCSpriteFrameCache *sharedSpriteFrameCache_=nil;
 			ow = abs(ow);
 			oh = abs(oh);
 			// create frame
-			spriteFrame = [CCSpriteFrame frameWithTexture:texture rect:CGRectMake(x, y, w, h) rotated:NO offset:CGPointMake(ox, oy) originalSize:CGSizeMake(ow, oh)];
+			
+			spriteFrame = [[CCSpriteFrame alloc] initWithTexture:texture
+													rectInPixels:CGRectMake(x, y, w, h)
+														 rotated:NO
+														  offset:CGPointMake(ox, oy)
+													originalSize:CGSizeMake(ow, oh)];
 		} else if(format == 1 || format == 2) {
-			CGRect frame = CGRectFromString([frameDict objectForKey:@"frame"]);
+			CGRect frame = CCRectFromString([frameDict objectForKey:@"frame"]);
 			BOOL rotated = NO;
 			
 			// rotation
 			if(format == 2)
 				rotated = [[frameDict objectForKey:@"rotated"] boolValue];
 			
-			CGPoint offset = CGPointFromString([frameDict objectForKey:@"offset"]);
-			CGSize sourceSize = CGSizeFromString([frameDict objectForKey:@"sourceSize"]);
+			CGPoint offset = CCPointFromString([frameDict objectForKey:@"offset"]);
+			CGSize sourceSize = CCSizeFromString([frameDict objectForKey:@"sourceSize"]);
 			
 			// create frame
-			spriteFrame = [CCSpriteFrame frameWithTexture:texture rect:frame rotated:rotated offset:offset originalSize:sourceSize];
+			spriteFrame = [[CCSpriteFrame alloc] initWithTexture:texture
+													rectInPixels:frame
+														 rotated:rotated
+														  offset:offset
+													originalSize:sourceSize];
 		} else if(format == 3) {
 			// get values
-			CGSize spriteSize = CGSizeFromString([frameDict objectForKey:@"spriteSize"]);
-			CGPoint spriteOffset = CGPointFromString([frameDict objectForKey:@"spriteOffset"]);
-			CGSize spriteSourceSize = CGSizeFromString([frameDict objectForKey:@"spriteSourceSize"]);
-			CGRect textureRect = CGRectFromString([frameDict objectForKey:@"textureRect"]);
+			CGSize spriteSize = CCSizeFromString([frameDict objectForKey:@"spriteSize"]);
+			CGPoint spriteOffset = CCPointFromString([frameDict objectForKey:@"spriteOffset"]);
+			CGSize spriteSourceSize = CCSizeFromString([frameDict objectForKey:@"spriteSourceSize"]);
+			CGRect textureRect = CCRectFromString([frameDict objectForKey:@"textureRect"]);
 			BOOL textureRotated = [[frameDict objectForKey:@"textureRotated"] boolValue];
 			
 			// get aliases
@@ -166,15 +176,16 @@ static CCSpriteFrameCache *sharedSpriteFrameCache_=nil;
 			}
 			
 			// create frame
-			spriteFrame = [CCSpriteFrame frameWithTexture:texture 
-													 rect:CGRectMake(textureRect.origin.x, textureRect.origin.y, spriteSize.width, spriteSize.height) 
-												  rotated:textureRotated 
-												   offset:spriteOffset 
-											 originalSize:spriteSourceSize];
+			spriteFrame = [[CCSpriteFrame alloc] initWithTexture:texture 
+													rectInPixels:CGRectMake(textureRect.origin.x, textureRect.origin.y, spriteSize.width, spriteSize.height) 
+														 rotated:textureRotated 
+														  offset:spriteOffset 
+													originalSize:spriteSourceSize];
 		}
 
 		// add sprite frame
 		[spriteFrames_ setObject:spriteFrame forKey:frameDictKey];
+		[spriteFrame release];
 	}
 }
 
@@ -240,6 +251,40 @@ static CCSpriteFrameCache *sharedSpriteFrameCache_=nil;
 
 	} else
 		[spriteFrames_ removeObjectForKey:name];
+}
+
+- (void) removeSpriteFramesFromFile:(NSString*) plist
+{
+	NSString *path = [CCFileUtils fullPathFromRelativePath:plist];
+	NSDictionary *dict = [NSDictionary dictionaryWithContentsOfFile:path];
+	
+	[self removeSpriteFramesFromDictionary:dict];
+}
+
+- (void) removeSpriteFramesFromDictionary:(NSDictionary*) dictionary
+{
+	NSDictionary *framesDict = [dictionary objectForKey:@"frames"];
+	NSMutableArray *keysToRemove=[NSMutableArray array];
+	
+	for(NSString *frameDictKey in framesDict)
+	{
+		if ([spriteFrames_ objectForKey:frameDictKey]!=nil)
+			[keysToRemove addObject:frameDictKey];
+	}
+	[spriteFrames_ removeObjectsForKeys:keysToRemove];
+}
+
+- (void) removeSpriteFramesFromTexture:(CCTexture2D*) texture
+{
+	NSMutableArray *keysToRemove=[NSMutableArray array];
+	
+	for (NSString *spriteFrameKey in spriteFrames_)
+	{
+		if ([[spriteFrames_ valueForKey:spriteFrameKey] texture] == texture) 
+			[keysToRemove addObject:spriteFrameKey];
+		
+	}
+	[spriteFrames_ removeObjectsForKeys:keysToRemove];
 }
 
 #pragma mark CCSpriteFrameCache - getting

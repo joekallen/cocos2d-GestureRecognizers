@@ -24,15 +24,21 @@
  */
 
 
-
-#import <OpenGLES/ES1/gl.h>
 #import <stdarg.h>
+
+#import "Platforms/CCGL.h"
 
 #import "CCLayer.h"
 #import "CCDirector.h"
-#import "CCTouchDispatcher.h"
 #import "ccMacros.h"
 #import "Support/CGPointExtension.h"
+
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+#import "Platforms/iOS/CCTouchDispatcher.h"
+#import "Platforms/iOS/CCDirectorIOS.h"
+#elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
+#import "Platforms/Mac/CCEventDispatcher.h"
+#endif
 
 #pragma mark -
 #pragma mark Layer
@@ -49,7 +55,12 @@
 		[self setContentSize:s];
 		self.isRelativeAnchorPoint = NO;
 
-		isAccelerometerEnabled = NO;
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+		isAccelerometerEnabled_ = NO;
+#elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
+		isMouseEnabled_ = NO;
+		isKeyboardEnabled_ = NO;
+#endif
 	}
 	
 	return self;
@@ -57,6 +68,7 @@
 
 #pragma mark Layer - Touch and Accelerometer related
 
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 -(void) registerWithTouchDispatcher
 {
 	[[CCTouchDispatcher sharedDispatcher] addStandardDelegate:self priority:0];
@@ -64,13 +76,13 @@
 
 -(BOOL) isAccelerometerEnabled
 {
-	return isAccelerometerEnabled;
+	return isAccelerometerEnabled_;
 }
 
 -(void) setIsAccelerometerEnabled:(BOOL)enabled
 {
-	if( enabled != isAccelerometerEnabled ) {
-		isAccelerometerEnabled = enabled;
+	if( enabled != isAccelerometerEnabled_ ) {
+		isAccelerometerEnabled_ = enabled;
 		if( isRunning_ ) {
 			if( enabled )
 				[[UIAccelerometer sharedAccelerometer] setDelegate:self];
@@ -82,9 +94,9 @@
 
 -(void) setIsTouchEnabled:(BOOL)enabled
 {
-	if( isTouchEnabled != enabled ) {
+	if( isTouchEnabled_ != enabled ) {
     // CCNode needs to remove any gesture recognizers
-		[super setIsTouchEnabled:enabled];
+    [super setIsTouchEnabled:enabled];
 		if( isRunning_ ) {
 			if( enabled )
 				[self registerWithTouchDispatcher];
@@ -94,36 +106,115 @@
 	}
 }
 
+#elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
+
+#pragma mark CCLayer - Mouse & Keyboard events
+
+-(NSInteger) mouseDelegatePriority
+{
+	return 0;
+}
+
+-(BOOL) isMouseEnabled
+{
+	return isMouseEnabled_;
+}
+
+-(void) setIsMouseEnabled:(BOOL)enabled
+{
+	if( isMouseEnabled_ != enabled ) {
+		isMouseEnabled_ = enabled;
+		
+		if( isRunning_ ) {
+			if( enabled )
+				[[CCEventDispatcher sharedDispatcher] addMouseDelegate:self priority:[self mouseDelegatePriority]];
+			else
+				[[CCEventDispatcher sharedDispatcher] removeMouseDelegate:self];
+		}
+	}
+}
+
+-(NSInteger) keyboardDelegatePriority
+{
+	return 0;
+}
+
+-(BOOL) isKeyboardEnabled
+{
+	return isKeyboardEnabled_;
+}
+
+-(void) setIsKeyboardEnabled:(BOOL)enabled
+{
+	if( isKeyboardEnabled_ != enabled ) {
+		isKeyboardEnabled_ = enabled;
+		
+		if( isRunning_ ) {
+			if( enabled )
+				[[CCEventDispatcher sharedDispatcher] addKeyboardDelegate:self priority:[self keyboardDelegatePriority] ];
+			else
+				[[CCEventDispatcher sharedDispatcher] removeKeyboardDelegate:self];
+		}
+	}
+}
+
+
+#endif // Mac
+
+
 #pragma mark Layer - Callbacks
 -(void) onEnter
 {
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 	// register 'parent' nodes first
 	// since events are propagated in reverse order
-	if (isTouchEnabled)
+	if (isTouchEnabled_)
 		[self registerWithTouchDispatcher];
+	
+	if( isAccelerometerEnabled_ )
+		[[UIAccelerometer sharedAccelerometer] setDelegate:self];
+
+#elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
+	if( isMouseEnabled_ )
+		[[CCEventDispatcher sharedDispatcher] addMouseDelegate:self priority:[self mouseDelegatePriority]];
+	
+	if( isKeyboardEnabled_)
+		[[CCEventDispatcher sharedDispatcher] addKeyboardDelegate:self priority:[self keyboardDelegatePriority]];
+#endif
 	
 	// then iterate over all the children
 	[super onEnter];
-
-	if( isAccelerometerEnabled )
-		[[UIAccelerometer sharedAccelerometer] setDelegate:self];
+	
+	
 }
 
 -(void) onExit
 {
-	if( isTouchEnabled )
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+	if( isTouchEnabled_ )
 		[[CCTouchDispatcher sharedDispatcher] removeDelegate:self];
 	
-	if( isAccelerometerEnabled )
+	if( isAccelerometerEnabled_ )
 		[[UIAccelerometer sharedAccelerometer] setDelegate:nil];
+
+#elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
+	if( isMouseEnabled_ )
+		[[CCEventDispatcher sharedDispatcher] removeMouseDelegate:self];
+	
+	if( isKeyboardEnabled_ )
+		[[CCEventDispatcher sharedDispatcher] removeKeyboardDelegate:self];
+#endif
 	
 	[super onExit];
 }
+
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 -(BOOL) ccTouchBegan:(UITouch *)touch withEvent:(UIEvent *)event
 {
 	NSAssert(NO, @"Layer#ccTouchBegan override me");
 	return YES;
 }
+#endif
 @end
 
 #pragma mark -
@@ -147,7 +238,7 @@
 
 + (id) layerWithColor:(ccColor4B)color
 {
-	return [[[self alloc] initWithColor:color] autorelease];
+	return [[(CCColorLayer*)[self alloc] initWithColor:color] autorelease];
 }
 
 - (id) initWithColor:(ccColor4B)color width:(GLfloat)w  height:(GLfloat) h
@@ -166,24 +257,24 @@
 			squareVertices[i] = 0.0f;
 				
 		[self updateColor];
-		[self setContentSize:CGSizeMake(w,h)];
+		[self setContentSize:CGSizeMake(w, h) ];
 	}
 	return self;
 }
 
 - (id) initWithColor:(ccColor4B)color
 {
-	CGSize s = [[CCDirector sharedDirector] winSize];
+	CGSize s = [[CCDirector sharedDirector] winSizeInPixels];
 	return [self initWithColor:color width:s.width height:s.height];
 }
 
 // override contentSize
 -(void) setContentSize: (CGSize) size
 {
-	squareVertices[2] = size.width;
-	squareVertices[5] = size.height;
-	squareVertices[6] = size.width;
-	squareVertices[7] = size.height;
+	squareVertices[2] = size.width * CC_CONTENT_SCALE_FACTOR();
+	squareVertices[5] = size.height * CC_CONTENT_SCALE_FACTOR();
+	squareVertices[6] = size.width * CC_CONTENT_SCALE_FACTOR();
+	squareVertices[7] = size.height * CC_CONTENT_SCALE_FACTOR();
 	
 	[super setContentSize:size];
 }

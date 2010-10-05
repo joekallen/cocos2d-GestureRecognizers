@@ -28,6 +28,10 @@
 #import "CCSprite.h"
 #import "Support/OpenGL_Internal.h"
 
+#import <Availability.h>
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+#import <UIKit/UIKit.h>
+#endif // iPHone
 
 enum  
 {
@@ -61,20 +65,26 @@ enum
 */
 @property (nonatomic,readwrite, assign) CCSprite* sprite;
 
-/** creates a RenderTexture object with width and height */
+/** creates a RenderTexture object with width and height in Points */
 +(id)renderTextureWithWidth:(int)width height:(int)height;
-/** initializes a RenderTexture object with width and height */
+/** initializes a RenderTexture object with width and height in Points */
 -(id)initWithWidth:(int)width height:(int)height;
 -(void)begin;
 -(void)end;
-/* get buffer as UIImage */
--(UIImage *)getUIImageFromBuffer;
+
+/** clears the texture with a color */
+-(void)clear:(float)r g:(float)g b:(float)b a:(float)a;
+
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+
 /** saves the texture into a file */
 -(BOOL)saveBuffer:(NSString*)name;
 /** saves the texture into a file. The format can be JPG or PNG */
 -(BOOL)saveBuffer:(NSString*)name format:(int)format;
-/** clears the texture with a color */
--(void)clear:(float)r g:(float)g b:(float)b a:(float)a;
+/* get buffer as UIImage */
+-(UIImage *)getUIImageFromBuffer;
+#endif
+
 @end
 
 

@@ -108,12 +108,13 @@ typedef enum {
 	// whether or not it's parent is a CCSpriteBatchNode
 	BOOL	usesBatchNode_;
 
-	// texture pixels
-	CGRect rect_;
-	BOOL rectRotated_;
+	// texture
+	CGRect	rect_;
+	CGRect	rectInPixels_;
+	BOOL	rectRotated_;
 	
 	// Offset Position (used by Zwoptex)
-	CGPoint	offsetPosition_;	// absolute
+	CGPoint	offsetPositionInPixels_;
 	CGPoint unflippedOffsetPositionFromCenter_;
 
 	// vertex coords, texture coords and color info
@@ -140,8 +141,9 @@ typedef enum {
 @property (nonatomic,readonly) ccV3F_C4B_T2F_Quad quad;
 /** The index used on the TextureATlas. Don't modify this value unless you know what you are doing */
 @property (nonatomic,readwrite) NSUInteger atlasIndex;
-/** returns the rect of the CCSprite */
+/** returns the rect of the CCSprite in points */
 @property (nonatomic,readonly) CGRect textureRect;
+/** returns whether or not the texture rectangle is rotated */
 @property (nonatomic,readonly) BOOL textureRectRotated;
 /** whether or not the sprite is flipped horizontally. 
  It only flips the texture of the sprite, and not the texture of the sprite's children.
@@ -175,10 +177,10 @@ typedef enum {
  @since v0.99.0
  */
 @property (nonatomic,readwrite) ccHonorParentTransform honorParentTransform;
-/** offset position of the sprite. Calculated automatically by editors like Zwoptex.
+/** offset position in pixels of the sprite in points. Calculated automatically by editors like Zwoptex.
  @since v0.99.0
  */
-@property (nonatomic,readonly) CGPoint	offsetPosition;
+@property (nonatomic,readonly) CGPoint	offsetPositionInPixels;
 /** conforms to CCTextureProtocol protocol */
 @property (nonatomic,readwrite) ccBlendFunc blendFunc;
 
@@ -194,10 +196,6 @@ typedef enum {
  The offset will be (0,0).
  */
 +(id) spriteWithTexture:(CCTexture2D*)texture rect:(CGRect)rect;
-
-/** Creates an sprite with a texture, a rect and offset.
- */
-+(id) spriteWithTexture:(CCTexture2D*)texture rect:(CGRect)rect offset:(CGPoint)offset;
 
 /** Creates an sprite with an sprite frame.
  */
@@ -248,7 +246,7 @@ typedef enum {
  */
 -(id) initWithTexture:(CCTexture2D*)texture;
 
-/** Initializes an sprite with a texture and a rect.
+/** Initializes an sprite with a texture and a rect in points.
  The offset will be (0,0).
  */
 -(id) initWithTexture:(CCTexture2D*)texture rect:(CGRect)rect;
@@ -288,10 +286,16 @@ typedef enum {
  */
 -(id) initWithCGImage:(CGImageRef)image key:(NSString*)key;
 
-/** Initializes an sprite with an CCSpriteSheet and a rect
+/** Initializes an sprite with an CCSpriteSheet and a rect in points
  */
 -(id) initWithBatchNode:(CCSpriteBatchNode*)batchNode rect:(CGRect)rect;
 -(id) initWithSpriteSheet:(CCSpriteSheetInternalOnly*)spritesheet rect:(CGRect)rect DEPRECATED_ATTRIBUTE;
+
+/** Initializes an sprite with an CCSpriteSheet and a rect in pixels
+ @since v0.99.5
+ */
+-(id) initWithBatchNode:(CCSpriteBatchNode*)batchNode rectInPixels:(CGRect)rect;
+
 
 
 #pragma mark CCSprite - BatchNode methods
@@ -300,12 +304,12 @@ typedef enum {
  */
 -(void)updateTransform;
 
-/** updates the texture rect of the CCSprite.
+/** updates the texture rect of the CCSprite in points.
  */
 -(void) setTextureRect:(CGRect) rect;
-/** updates the texture rect and rectRotated of the CCSprite
+/** updates the texture rect, rectRotated and untrimmed size of the CCSprite in pixels
  */
--(void) setTextureRect:(CGRect) rect rotated:(BOOL)rotated;
+-(void) setTextureRectInPixels:(CGRect)rect rotated:(BOOL)rotated untrimmedSize:(CGSize)size;
 
 /** tell the sprite to use self-render.
  @since v0.99.0

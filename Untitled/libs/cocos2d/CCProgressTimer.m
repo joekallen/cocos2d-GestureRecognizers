@@ -132,14 +132,22 @@ const char kProgressTextureCoords = 0x1e;
 ///
 //	@returns the vertex position from the texture coordinate
 ///
--(CGPoint)vertexFromTexCoord:(CGPoint) texCoord
+-(ccVertex2F)vertexFromTexCoord:(CGPoint) texCoord
 {
+	CGPoint tmp;
+	ccVertex2F ret;
 	if (sprite_.texture) {
-		return ccp(sprite_.texture.contentSize.width * texCoord.x/sprite_.texture.maxS,
-				   sprite_.texture.contentSize.height * (1 - (texCoord.y/sprite_.texture.maxT)));
+		CCTexture2D *texture = [sprite_ texture];
+		CGSize texSize = [texture contentSizeInPixels];
+		tmp = ccp(texSize.width * texCoord.x/texture.maxS,
+				   texSize.height * (1 - (texCoord.y/texture.maxT)));
 	} else {
-		return CGPointZero;
+		tmp = CGPointZero;
 	}
+	
+	ret.x = tmp.x;
+	ret.y = tmp.y;
+	return ret;
 }
 -(void)updateColor {
 	ccColor4F color = ccc4FFromccc3B(sprite_.color);

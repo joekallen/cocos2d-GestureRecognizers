@@ -26,6 +26,14 @@
 #ifndef __CC_DRAWING_PRIMITIVES_H
 #define __CC_DRAWING_PRIMITIVES_H
 
+#import <Availability.h>
+#import <Foundation/Foundation.h>
+
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+#import <CoreGraphics/CGGeometry.h>	// for CGPoint
+#endif
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif	
@@ -33,47 +41,48 @@ extern "C" {
 /**
  @file
  Drawing OpenGL ES primitives.
-  - drawPoint
-  - drawLine
-  - drawPoly
-  - drawCircle
- 
+  - ccDrawPoint
+  - ccDrawLine
+  - ccDrawPoly
+  - ccDrawCircle
+  - ccDrawQuadBezier
+  - ccDrawCubicBezier
+
  You can change the color, width and other property by calling the
- glColor4ub(), glLineWitdh(), glPointSize().
+   glColor4ub(), glLineWitdh(), glPointSize().
  
  @warning These functions draws the Line, Point, Polygon, immediately. They aren't batched. If you are going to make a game that depends on these primitives, I suggest creating a batch.
  */
+	
 
-#import <CoreGraphics/CGGeometry.h>	// for CGPoint
-#import <objc/objc.h>				// for BOOL
-
-/** draws a point given x and y coordinate */
+/** draws a point given x and y coordinate measured in points. */
 void ccDrawPoint( CGPoint point );
 
 /** draws an array of points.
  @since v0.7.2
  */
-void ccDrawPoints( CGPoint *points, unsigned int numberOfPoints );
+void ccDrawPoints( CGPoint *points, NSUInteger numberOfPoints );
 
-/** draws a line given the origin and destination point */
+/** draws a line given the origin and destination point measured in points. */
 void ccDrawLine( CGPoint origin, CGPoint destination );
 
-/** draws a poligon given a pointer to CGPoint coordiantes and the number of vertices. The polygon can be closed or open
+/** draws a poligon given a pointer to CGPoint coordiantes and the number of vertices measured in points.
+ The polygon can be closed or open
  */
-void ccDrawPoly( CGPoint *vertices, int numOfVertices, BOOL closePolygon );
+void ccDrawPoly( CGPoint *vertices, NSUInteger numOfVertices, BOOL closePolygon );
 
-/** draws a circle given the center, radius and number of segments. */
-void ccDrawCircle( CGPoint center, float radius, float angle, int segments, BOOL drawLineToCenter);
+/** draws a circle given the center, radius and number of segments measured in points */
+void ccDrawCircle( CGPoint center, float radius, float angle, NSUInteger segments, BOOL drawLineToCenter);
 
-/** draws a quad bezier path
+/** draws a quad bezier path measured in points.
  @since v0.8
  */
-void ccDrawQuadBezier(CGPoint origin, CGPoint control, CGPoint destination, int segments);
+void ccDrawQuadBezier(CGPoint origin, CGPoint control, CGPoint destination, NSUInteger segments);
 
-/** draws a cubic bezier path
+/** draws a cubic bezier path measured in points.
  @since v0.8
  */
-void ccDrawCubicBezier(CGPoint origin, CGPoint control1, CGPoint control2, CGPoint destination, int segments);
+void ccDrawCubicBezier(CGPoint origin, CGPoint control1, CGPoint control2, CGPoint destination, NSUInteger segments);
 
 #ifdef __cplusplus
 }

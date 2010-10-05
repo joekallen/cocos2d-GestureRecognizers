@@ -25,11 +25,16 @@
 
 
 
-#import <UIKit/UIKit.h>
+#import <Availability.h>
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+#import <UIKit/UIKit.h>					// Needed for UIAccelerometerDelegate
+#import "Platforms/iOS/CCTouchDelegateProtocol.h"		// Touches only supported on iOS
+#elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
+#import "Platforms/Mac/CCEventDispatcher.h"
+#endif
 
 #import "CCProtocols.h"
 #import "CCNode.h"
-#import "CCTouchDelegateProtocol.h"
 
 //
 // CCLayer
@@ -37,13 +42,14 @@
 /** CCLayer is a subclass of CCNode that implements the TouchEventsDelegate protocol.
  
  All features from CCNode are valid, plus the following new features:
+ - It can receive iPhone Touches
  - It can receive Accelerometer input
 */
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 @interface CCLayer : CCNode <UIAccelerometerDelegate, CCStandardTouchDelegate, CCTargetedTouchDelegate>
 {
-	BOOL isAccelerometerEnabled;
+	BOOL isAccelerometerEnabled_;
 }
-
 /** If isTouchEnabled, this method is called onEnter. Override it to change the
  way CCLayer receives touch events.
  ( Default: [[TouchDispatcher sharedDispatcher] addStandardDelegate:self priority:0] )
@@ -52,15 +58,70 @@
      {
         [[TouchDispatcher sharedDispatcher] addTargetedDelegate:self priority:INT_MIN+1 swallowsTouches:YES];
      }
+ 
+ Valid only on iOS. Not valid on Mac.
+ 
  @since v0.8.0
  */
 -(void) registerWithTouchDispatcher;
 
+/** whether or not it will receive Touch events.
+ You can enable / disable touch events with this property.
+ Only the touches of this node will be affected. This "method" is not propagated to it's children.
+ 
+ Valid only on iOS. Not valid on Mac.
+
+ @since v0.8.1
+ */
+//@property(nonatomic,assign) BOOL isTouchEnabled; // in CCNode
 /** whether or not it will receive Accelerometer events
  You can enable / disable accelerometer events with this property.
+ 
+ Valid only on iOS. Not valid on Mac.
+
  @since v0.8.1
  */
 @property(nonatomic,assign) BOOL isAccelerometerEnabled;
+
+#elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
+
+
+@interface CCLayer : CCNode <CCKeyboardEventDelegate, CCMouseEventDelegate>
+{
+	BOOL	isMouseEnabled_;
+	BOOL	isKeyboardEnabled_;
+}
+
+/** whether or not it will receive mouse events.
+ 
+ Valind only Mac. Not valid on iOS
+ */
+@property (nonatomic, readwrite) BOOL isMouseEnabled;
+
+/** whether or not it will receive keyboard events.
+ 
+ Valind only Mac. Not valid on iOS
+ */
+@property (nonatomic, readwrite) BOOL isKeyboardEnabled;
+
+/** priority of the mouse event delegate.
+ Default 0.
+ Override this method to set another priority.
+ 
+ Valind only Mac. Not valid on iOS 
+ */
+-(NSInteger) mouseDelegatePriority;
+
+/** priority of the keyboard event delegate.
+ Default 0.
+ Override this method to set another priority.
+ 
+ Valind only Mac. Not valid on iOS 
+ */
+-(NSInteger) keyboardDelegatePriority;
+
+#endif // mac
+
 
 @end
 
@@ -83,21 +144,21 @@
 	ccBlendFunc	blendFunc_;
 }
 
-/** creates a CCLayer with color, width and height */
+/** creates a CCLayer with color, width and height in Points*/
 + (id) layerWithColor: (ccColor4B)color width:(GLfloat)w height:(GLfloat)h;
 /** creates a CCLayer with color. Width and height are the window size. */
 + (id) layerWithColor: (ccColor4B)color;
 
-/** initializes a CCLayer with color, width and height */
+/** initializes a CCLayer with color, width and height in Points */
 - (id) initWithColor:(ccColor4B)color width:(GLfloat)w height:(GLfloat)h;
 /** initializes a CCLayer with color. Width and height are the window size. */
 - (id) initWithColor:(ccColor4B)color;
 
-/** change width */
+/** change width in Points */
 -(void) changeWidth: (GLfloat)w;
-/** change height */
+/** change height in Points */
 -(void) changeHeight: (GLfloat)h;
-/** change width and height
+/** change width and height in Points
  @since v0.8
  */
 -(void) changeWidth:(GLfloat)w height:(GLfloat)h;

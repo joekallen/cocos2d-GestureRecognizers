@@ -1,4 +1,5 @@
-To apply this patch copy the cocos2d.patch file the folder 
+This patch has only been tested with coco2d for iphone v0.99.5 beta 3.
+To apply this patch copy the cocos2d.patch file the folder
 YourProject/libs/cocos2d then open a terminal and navigate to the folder you
 just copied the patch to and run the following command 
 patch -p6 -i cocos2d.patch
