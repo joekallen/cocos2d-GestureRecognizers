@@ -835,13 +835,7 @@
   /*  we should be able to use touchableArea here, even if a node doesn't set
    this, it will return the contentArea.  */
   rect.size = self.touchableArea;
-  CGPoint anchor = anchorPoint_;
-  
-  // we pretty much need to undo the anchor to get our rect to start at the lower left
-  anchor.x = 0.5f - anchor.x;
-  anchor.y = 0.5f - anchor.y;
-  
-  rect.origin = CGPointMake( -(rect.size.width*anchor.x), -(rect.size.height*anchor.y) );
+  rect.origin = CGPointZero;;
   
   if( CGRectContainsPoint(rect,pt) )
     return YES;
