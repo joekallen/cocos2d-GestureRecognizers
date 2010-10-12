@@ -1,6 +1,6 @@
 diff -rupN old/CCLayer.h new/CCLayer.h
---- old/CCLayer.h	2010-10-06 00:40:38.000000000 -0700
-+++ new/CCLayer.h	2010-10-06 00:40:52.000000000 -0700
+--- old/CCLayer.h	2010-10-12 09:19:18.000000000 -0700
++++ new/CCLayer.h	2010-10-12 09:19:02.000000000 -0700
 @@ -48,7 +48,6 @@
  #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
  @interface CCLayer : CCNode <UIAccelerometerDelegate, CCStandardTouchDelegate, CCTargetedTouchDelegate>
@@ -19,8 +19,8 @@ diff -rupN old/CCLayer.h new/CCLayer.h
   You can enable / disable accelerometer events with this property.
   
 diff -rupN old/CCLayer.m new/CCLayer.m
---- old/CCLayer.m	2010-10-06 00:40:38.000000000 -0700
-+++ new/CCLayer.m	2010-10-06 00:40:52.000000000 -0700
+--- old/CCLayer.m	2010-10-12 09:19:18.000000000 -0700
++++ new/CCLayer.m	2010-10-12 09:19:02.000000000 -0700
 @@ -56,7 +56,6 @@
  		self.isRelativeAnchorPoint = NO;
  
@@ -48,8 +48,8 @@ diff -rupN old/CCLayer.m new/CCLayer.m
  			if( enabled )
  				[self registerWithTouchDispatcher];
 diff -rupN old/CCNode.h new/CCNode.h
---- old/CCNode.h	2010-10-06 00:40:38.000000000 -0700
-+++ new/CCNode.h	2010-10-06 00:40:52.000000000 -0700
+--- old/CCNode.h	2010-10-12 09:19:18.000000000 -0700
++++ new/CCNode.h	2010-10-12 09:19:02.000000000 -0700
 @@ -33,6 +33,10 @@
  #import "ccConfig.h"
  #import "Support/CCArray.h"
@@ -104,8 +104,8 @@ diff -rupN old/CCNode.h new/CCNode.h
  // transformation methods
  
 diff -rupN old/CCNode.m new/CCNode.m
---- old/CCNode.m	2010-10-06 00:40:38.000000000 -0700
-+++ new/CCNode.m	2010-10-06 00:40:52.000000000 -0700
+--- old/CCNode.m	2010-10-12 09:19:18.000000000 -0700
++++ new/CCNode.m	2010-10-12 09:19:02.000000000 -0700
 @@ -39,6 +39,7 @@
  #import <Availability.h>
  #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
@@ -159,7 +159,7 @@ diff -rupN old/CCNode.m new/CCNode.m
  	[self pauseSchedulerAndActions];
  	isRunning_ = NO;	
  	
-@@ -739,6 +757,151 @@
+@@ -739,6 +757,145 @@
  	[[CCActionManager sharedManager] pauseTarget:self];
  }
  
@@ -241,13 +241,7 @@ diff -rupN old/CCNode.m new/CCNode.m
 +  /*  we should be able to use touchableArea here, even if a node doesn't set
 +   this, it will return the contentArea.  */
 +  rect.size = self.touchableArea;
-+  CGPoint anchor = anchorPoint_;
-+  
-+  // we pretty much need to undo the anchor to get our rect to start at the lower left
-+  anchor.x = 0.5f - anchor.x;
-+  anchor.y = 0.5f - anchor.y;
-+  
-+  rect.origin = CGPointMake( -(rect.size.width*anchor.x), -(rect.size.height*anchor.y) );
++  rect.origin = CGPointZero;;
 +  
 +  if( CGRectContainsPoint(rect,pt) )
 +    return YES;
@@ -313,7 +307,7 @@ diff -rupN old/CCNode.m new/CCNode.m
  - (CGAffineTransform)nodeToParentTransform
 diff -rupN old/Platforms/iOS/CCGestureRecognizer.h new/Platforms/iOS/CCGestureRecognizer.h
 --- old/Platforms/iOS/CCGestureRecognizer.h	1969-12-31 17:00:00.000000000 -0700
-+++ new/Platforms/iOS/CCGestureRecognizer.h	2010-10-06 00:40:52.000000000 -0700
++++ new/Platforms/iOS/CCGestureRecognizer.h	2010-10-12 09:19:02.000000000 -0700
 @@ -0,0 +1,46 @@
 +//
 +//  CCGestureRecognizer.h
@@ -363,7 +357,7 @@ diff -rupN old/Platforms/iOS/CCGestureRecognizer.h new/Platforms/iOS/CCGestureRe
 +#endif  // end of __CCGestureRecognizer_H__
 diff -rupN old/Platforms/iOS/CCGestureRecognizer.m new/Platforms/iOS/CCGestureRecognizer.m
 --- old/Platforms/iOS/CCGestureRecognizer.m	1969-12-31 17:00:00.000000000 -0700
-+++ new/Platforms/iOS/CCGestureRecognizer.m	2010-10-06 00:40:52.000000000 -0700
++++ new/Platforms/iOS/CCGestureRecognizer.m	2010-10-12 09:19:02.000000000 -0700
 @@ -0,0 +1,328 @@
 +//
 +//  CCGestureRecognizer.m
@@ -694,8 +688,8 @@ diff -rupN old/Platforms/iOS/CCGestureRecognizer.m new/Platforms/iOS/CCGestureRe
 +}
 +@end
 diff -rupN old/cocos2d.h new/cocos2d.h
---- old/cocos2d.h	2010-10-06 00:40:39.000000000 -0700
-+++ new/cocos2d.h	2010-10-06 00:40:52.000000000 -0700
+--- old/cocos2d.h	2010-10-12 09:19:18.000000000 -0700
++++ new/cocos2d.h	2010-10-12 09:19:02.000000000 -0700
 @@ -128,6 +128,7 @@
  #import "Platforms/iOS/CCTouchHandler.h"
  #import "Platforms/iOS/EAGLView.h"
