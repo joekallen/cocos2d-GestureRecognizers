@@ -105,7 +105,7 @@ diff -rupN old/CCNode.h new/CCNode.h
  
 diff -rupN old/CCNode.m new/CCNode.m
 --- old/CCNode.m	2010-10-12 09:19:18.000000000 -0700
-+++ new/CCNode.m	2010-10-12 09:19:02.000000000 -0700
++++ new/CCNode.m	2010-12-27 23:48:33.000000000 +0100
 @@ -39,6 +39,7 @@
  #import <Availability.h>
  #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
@@ -114,20 +114,20 @@ diff -rupN old/CCNode.m new/CCNode.m
  #endif
  
  
-@@ -69,6 +70,9 @@
- @synthesize vertexZ = vertexZ_;
- @synthesize isRunning=isRunning_;
+@@ -70,6 +71,9 @@
+ @synthesize isRunning = isRunning_;
+ @synthesize userData = userData_;
  
 +#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 +@synthesize gestureRecognizers = gestureRecognizers_;
 +#endif
  #pragma mark CCNode - Transform related properties
  
- @synthesize rotation=rotation_, scaleX=scaleX_, scaleY=scaleY_;
-@@ -264,6 +268,11 @@
- 		
- 		// userData is always inited as nil
- 		userData = nil;
+ @synthesize rotation = rotation_, scaleX = scaleX_, scaleY = scaleY_;
+@@ -273,6 +277,11 @@
+ 
+ 		//initialize parent to nil
+ 		parent_ = nil;
 +#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 +    // lazy allocation
 +    gestureRecognizers_ = nil;
@@ -136,7 +136,7 @@ diff -rupN old/CCNode.m new/CCNode.m
  	}
  	
  	return self;
-@@ -626,6 +635,11 @@
+@@ -636,6 +645,11 @@
  
  -(void) onEnter
  {
@@ -148,7 +148,7 @@ diff -rupN old/CCNode.m new/CCNode.m
  	[children_ makeObjectsPerformSelector:@selector(onEnter)];	
  	[self resumeSchedulerAndActions];
  	
-@@ -639,6 +653,10 @@
+@@ -649,6 +663,10 @@
  
  -(void) onExit
  {
@@ -159,7 +159,7 @@ diff -rupN old/CCNode.m new/CCNode.m
  	[self pauseSchedulerAndActions];
  	isRunning_ = NO;	
  	
-@@ -739,6 +757,145 @@
+@@ -747,6 +765,145 @@
  	[[CCActionManager sharedManager] pauseTarget:self];
  }
  
