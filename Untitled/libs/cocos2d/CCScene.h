@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +37,7 @@
 
  It is a good practice to use and CCScene as the parent of all your nodes.
 */
-@interface CCScene : CCNode {
-
+@interface CCScene : CCNode
+{
 }
 @end

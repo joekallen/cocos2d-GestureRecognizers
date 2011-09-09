@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -98,9 +99,12 @@
 #pragma mark CCLabelProtocol
 /** Common interface for Labels */
 @protocol CCLabelProtocol <NSObject>
-/** sets a new label using an NSString */
+/** sets a new label using an NSString.
+ The string will be copied.
+ */
 -(void) setString:(NSString*)label;
-
+/** returns the string that is rendered */
+-(NSString*) string;
 @optional
 /** sets a new label using a CString.
  It is faster than setString since it doesn't require to alloc/retain/release an NString object.
@@ -110,3 +114,12 @@
 @end
 
 
+#pragma mark -
+#pragma mark CCProjectionProtocol
+/** OpenGL projection protocol */
+@protocol CCProjectionProtocol <NSObject>
+/** Called by CCDirector when the porjection is updated, and "custom" projection is used
+ @since v0.99.5
+ */
+-(void) updateProjection;
+@end

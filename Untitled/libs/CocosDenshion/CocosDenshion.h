@@ -103,6 +103,17 @@ Requirements:
 #define CD_SAMPLE_RATE_BASIC 8000
 #define CD_SAMPLE_RATE_DEFAULT 44100
 
+extern NSString * const kCDN_BadAlContext;
+extern NSString * const kCDN_AsynchLoadComplete;
+
+extern float const kCD_PitchDefault;
+extern float const kCD_PitchLowerOneOctave;
+extern float const kCD_PitchHigherOneOctave;
+extern float const kCD_PanDefault;
+extern float const kCD_PanFullLeft;
+extern float const kCD_PanFullRight;
+extern float const kCD_GainDefault;
+
 enum bufferState {
 	CD_BS_EMPTY = 0,
 	CD_BS_LOADED = 1,
@@ -122,6 +133,9 @@ typedef struct _bufferInfo {
 	ALuint bufferId;
 	int bufferState;
 	void* bufferData;
+	ALenum format;
+	ALsizei sizeInBytes;
+	ALsizei frequencyInHertz;
 } bufferInfo;	
 
 typedef struct _sourceInfo {
@@ -193,12 +207,13 @@ typedef struct _sourceInfo {
 	sourceInfo		*_sources;
 	sourceGroup	    *_sourceGroups;
 	ALCcontext		*context;
-	int				_sourceGroupTotal;
+	NSUInteger		_sourceGroupTotal;
 	UInt32			_audioSessionCategory;
 	BOOL			_handleAudioSession;
+	ALfloat			_preMuteGain;
+	NSObject        *_mutexBufferLoad;
 	BOOL			mute_;
 	BOOL			enabled_;
-	ALfloat			_preMuteGain;
 
 	ALenum			lastErrorCode_;
 	BOOL			functioning_;
@@ -219,7 +234,7 @@ typedef struct _sourceInfo {
 /** Total number of sources available */
 @property (readonly) int sourceTotal;
 /** Total number of source groups that have been defined */
-@property (readonly) int sourceGroupTotal;
+@property (readonly) NSUInteger sourceGroupTotal;
 
 /** Sets the sample rate for the audio mixer. For best performance this should match the sample rate of your audio content */
 +(void) setMixerSampleRate:(Float32) sampleRate;
@@ -241,7 +256,7 @@ typedef struct _sourceInfo {
 /** Stops all playing sounds */
 -(void) stopAllSounds;
 -(void) defineSourceGroups:(NSArray*) sourceGroupDefinitions;
--(void) defineSourceGroups:(int[]) sourceGroupDefinitions total:(int) total;
+-(void) defineSourceGroups:(int[]) sourceGroupDefinitions total:(NSUInteger) total;
 -(void) setSourceGroupNonInterruptible:(int) sourceGroupId isNonInterruptible:(BOOL) isNonInterruptible;
 -(void) setSourceGroupEnabled:(int) sourceGroupId enabled:(BOOL) enabled;
 -(BOOL) sourceGroupEnabled:(int) sourceGroupId;
@@ -250,6 +265,13 @@ typedef struct _sourceInfo {
 -(void) loadBuffersAsynchronously:(NSArray *) loadRequests;
 -(BOOL) unloadBuffer:(int) soundId;
 -(ALCcontext *) openALContext;
+
+/** Returns the duration of the buffer in seconds or a negative value if the buffer id is invalid */
+-(float) bufferDurationInSeconds:(int) soundId;
+/** Returns the size of the buffer in bytes or a negative value if the buffer id is invalid */
+-(ALsizei) bufferSizeInBytes:(int) soundId;
+/** Returns the sampling frequency of the buffer in hertz or a negative value if the buffer id is invalid */
+-(ALsizei) bufferFrequencyInHertz:(int) soundId;
 
 /** Used internally, never call unless you know what you are doing */
 -(void) _soundSourcePreRelease:(CDSoundSource *) soundSource;
@@ -281,6 +303,8 @@ typedef struct _sourceInfo {
 @property (readwrite, nonatomic) BOOL looping;
 @property (readonly)  BOOL isPlaying;
 @property (readwrite, nonatomic) int soundId;
+/** Returns the duration of the attached buffer in seconds or a negative value if the buffer is invalid */
+@property (readonly) float durationInSeconds;
 
 /** Stores the last error code that occurred. Check against AL_NO_ERROR */
 @property (readonly) ALenum lastError;
@@ -330,7 +354,7 @@ typedef struct _sourceInfo {
 @property (readonly) NSString *filePath;
 @property (readonly) int soundId;
 
-- (id)init:(int) theSoundId filePath:(NSString *) theFilePath;
+- (id)init:(int) theSoundId filePath:(const NSString *) theFilePath;
 @end
 
 /** Interpolation type */

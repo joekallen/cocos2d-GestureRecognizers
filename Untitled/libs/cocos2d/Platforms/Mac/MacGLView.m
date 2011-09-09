@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +37,7 @@
 #import <OpenGL/gl.h>
 
 #import "CCDirectorMac.h"
+#import "../../ccConfig.h"
 
 
 @implementation MacGLView
@@ -49,34 +51,41 @@
 
 - (id) initWithFrame:(NSRect)frameRect
 {
-    NSOpenGLPixelFormatAttribute attrs[] =
+	self = [self initWithFrame:frameRect shareContext:nil];
+	return self;
+}
+
+- (id) initWithFrame:(NSRect)frameRect shareContext:(NSOpenGLContext*)context
+{
+    NSOpenGLPixelFormatAttribute attribs[] =
     {
 		NSOpenGLPFAAccelerated,
 		NSOpenGLPFANoRecovery,
 		NSOpenGLPFADoubleBuffer,
 		NSOpenGLPFADepthSize, 24,
+		
 		0
     };
 	
-    NSOpenGLPixelFormat *pf = [[NSOpenGLPixelFormat alloc] initWithAttributes:attrs];
+	NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attribs];
 	
-    if (!pf)
+	if (!pixelFormat)
 		NSLog(@"No OpenGL pixel format");
 	
-    if (self = [super initWithFrame:frameRect pixelFormat:[pf autorelease]])
-	{
-		[[self openGLContext] makeCurrentContext];
+	if( (self = [super initWithFrame:frameRect pixelFormat:[pixelFormat autorelease]]) ) {
+		
+		if( context )
+			[self setOpenGLContext:context];
 
 		// Synchronize buffer swaps with vertical refresh rate
 		GLint swapInt = 1;
 		[[self openGLContext] setValues:&swapInt forParameter:NSOpenGLCPSwapInterval]; 
 		
-		
-//		GLint order = -1;
-//		[[self openGLContext] setValues:&order forParameter:NSOpenGLCPSurfaceOrder];
+//             GLint order = -1;
+//             [[self openGLContext] setValues:&order forParameter:NSOpenGLCPSurfaceOrder];
 		
 		// event delegate
-		eventDelegate_ = nil;
+		eventDelegate_ = nil;		
 	}
 	
 	return self;
@@ -107,113 +116,72 @@
 	[super dealloc];
 }
 
+#if CC_DIRECTOR_MAC_USE_DISPLAY_LINK_THREAD
+#define DISPATCH_EVENT(__event__, __selector__) [eventDelegate_ queueEvent:__event__ selector:__selector__];
+#else
+#define DISPATCH_EVENT(__event__, __selector__)												\
+	id obj = eventDelegate_;																\
+	[obj performSelector:__selector__														\
+			onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]			\
+		  withObject:__event__																\
+	   waitUntilDone:NO];
+#endif
+
 #pragma mark MacGLView - Mouse events
 - (void)mouseDown:(NSEvent *)theEvent
 {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 - (void)mouseMoved:(NSEvent *)theEvent
 {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 - (void)mouseDragged:(NSEvent *)theEvent
 {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 - (void)mouseUp:(NSEvent *)theEvent
 {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 - (void)rightMouseDown:(NSEvent *)theEvent {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 - (void)rightMouseDragged:(NSEvent *)theEvent {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 - (void)rightMouseUp:(NSEvent *)theEvent {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 - (void)otherMouseDown:(NSEvent *)theEvent {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 - (void)otherMouseDragged:(NSEvent *)theEvent {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 - (void)otherMouseUp:(NSEvent *)theEvent {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 - (void)mouseEntered:(NSEvent *)theEvent {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 - (void)mouseExited:(NSEvent *)theEvent {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 -(void) scrollWheel:(NSEvent *)theEvent {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 #pragma mark MacGLView - Key events
@@ -233,57 +201,40 @@
 	return YES;
 }
 
-- (void)keyDown:(NSEvent *)theEvent {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+- (void)keyDown:(NSEvent *)theEvent
+{
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
-- (void)keyUp:(NSEvent *)theEvent {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:theEvent
-		   waitUntilDone:NO];
+- (void)keyUp:(NSEvent *)theEvent
+{
+	DISPATCH_EVENT(theEvent, _cmd);
+}
+
+- (void)flagsChanged:(NSEvent *)theEvent
+{
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 #pragma mark MacGLView - Touch events
-- (void)touchesBeganWithEvent:(NSEvent *)event
+- (void)touchesBeganWithEvent:(NSEvent *)theEvent
 {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:event
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
-- (void)touchesMovedWithEvent:(NSEvent *)event
+- (void)touchesMovedWithEvent:(NSEvent *)theEvent
 {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:event
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
-- (void)touchesEndedWithEvent:(NSEvent *)event
+- (void)touchesEndedWithEvent:(NSEvent *)theEvent
 {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:event
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
-- (void)touchesCancelledWithEvent:(NSEvent *)event
+- (void)touchesCancelledWithEvent:(NSEvent *)theEvent
 {
-	NSObject *obj = eventDelegate_;
-	[obj performSelector:_cmd
-				onThread:[(CCDirectorMac*)[CCDirector sharedDirector] runningThread]
-			  withObject:event
-		   waitUntilDone:NO];
+	DISPATCH_EVENT(theEvent, _cmd);
 }
 
 @end

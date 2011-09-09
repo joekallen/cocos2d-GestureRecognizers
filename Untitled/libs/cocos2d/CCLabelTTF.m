@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +44,11 @@
 	return nil;
 }
 
++ (id) labelWithString:(NSString*)string dimensions:(CGSize)dimensions alignment:(CCTextAlignment)alignment lineBreakMode:(CCLineBreakMode)lineBreakMode fontName:(NSString*)name fontSize:(CGFloat)size;
+{
+	return [[[self alloc] initWithString: string dimensions:dimensions alignment:alignment lineBreakMode:lineBreakMode fontName:name fontSize:size]autorelease];
+}
+
 + (id) labelWithString:(NSString*)string dimensions:(CGSize)dimensions alignment:(CCTextAlignment)alignment fontName:(NSString*)name fontSize:(CGFloat)size
 {
 	return [[[self alloc] initWithString: string dimensions:dimensions alignment:alignment fontName:name fontSize:size]autorelease];
@@ -54,7 +60,7 @@
 }
 
 
-- (id) initWithString:(NSString*)str dimensions:(CGSize)dimensions alignment:(CCTextAlignment)alignment fontName:(NSString*)name fontSize:(CGFloat)size
+- (id) initWithString:(NSString*)str dimensions:(CGSize)dimensions alignment:(CCTextAlignment)alignment lineBreakMode:(CCLineBreakMode)lineBreakMode fontName:(NSString*)name fontSize:(CGFloat)size
 {
 	if( (self=[super init]) ) {
 
@@ -62,10 +68,16 @@
 		alignment_ = alignment;
 		fontName_ = [name retain];
 		fontSize_ = size * CC_CONTENT_SCALE_FACTOR();
+		lineBreakMode_ = lineBreakMode;
 		
 		[self setString:str];
 	}
 	return self;
+}
+
+- (id) initWithString:(NSString*)str dimensions:(CGSize)dimensions alignment:(CCTextAlignment)alignment fontName:(NSString*)name fontSize:(CGFloat)size
+{
+	return [self initWithString:str dimensions:dimensions alignment:alignment lineBreakMode:CCLineBreakModeWordWrap fontName:name fontSize:size];
 }
 
 - (id) initWithString:(NSString*)str fontName:(NSString*)name fontSize:(CGFloat)size
@@ -83,6 +95,9 @@
 
 - (void) setString:(NSString*)str
 {
+	[string_ release];
+	string_ = [str copy];
+
 	CCTexture2D *tex;
 	if( CGSizeEqualToSize( dimensions_, CGSizeZero ) )
 		tex = [[CCTexture2D alloc] initWithString:str
@@ -92,25 +107,35 @@
 		tex = [[CCTexture2D alloc] initWithString:str
 									   dimensions:dimensions_
 										alignment:alignment_
+									lineBreakMode:lineBreakMode_
 										 fontName:fontName_
 										 fontSize:fontSize_];
-
 
 	[self setTexture:tex];
 	[tex release];
 
-	CGSize size = [texture_ contentSize];
-	[self setTextureRect: CGRectMake(0, 0, size.width, size.height)];
+	CGRect rect = CGRectZero;
+	rect.size = [texture_ contentSize];
+	[self setTextureRect: rect];
+}
+
+-(NSString*) string
+{
+	return string_;
 }
 
 - (void) dealloc
 {
+	[string_ release];
 	[fontName_ release];
+
 	[super dealloc];
 }
 
 - (NSString*) description
 {
-	return [NSString stringWithFormat:@"<%@ = %08X | FontName = %@, FontSize = %.1f>", [self class], self, fontName_, fontSize_];
+	// XXX: string_, fontName_ can't be displayed here, since they might be already released
+
+	return [NSString stringWithFormat:@"<%@ = %08X | FontSize = %.1f>", [self class], self, fontSize_];
 }
 @end

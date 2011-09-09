@@ -1,8 +1,10 @@
 /*
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
- * Copyright (c) 2009-2010 Ricardo Quesada
  * Copyright (C) 2009 Matt Oswald
+ *
+ * Copyright (c) 2009-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +40,8 @@ const NSUInteger defaultCapacity = 29;
 #pragma mark -
 #pragma mark CCSpriteBatchNode
 
+static 	SEL selUpdate = NULL;
+
 @interface CCSpriteBatchNode (private)
 -(void) updateBlendFunc;
 @end
@@ -48,6 +52,13 @@ const NSUInteger defaultCapacity = 29;
 @synthesize blendFunc = blendFunc_;
 @synthesize descendants = descendants_;
 
+
++(void) initialize
+{
+	if ( self == [CCSpriteBatchNode class] ) {
+		selUpdate = @selector(updateTransform);
+	}
+}
 /*
  * creation with CCTexture2D
  */
@@ -55,18 +66,10 @@ const NSUInteger defaultCapacity = 29;
 {
 	return [[[self alloc] initWithTexture:tex capacity:defaultCapacity] autorelease];
 }
-+(id)spriteSheetWithTexture:(CCTexture2D *)tex // XXX DEPRECATED
-{
-	return [self batchNodeWithTexture:tex];
-}
 
 +(id)batchNodeWithTexture:(CCTexture2D *)tex capacity:(NSUInteger)capacity
 {
 	return [[[self alloc] initWithTexture:tex capacity:capacity] autorelease];
-}
-+(id)spriteSheetWithTexture:(CCTexture2D *)tex capacity:(NSUInteger)capacity // XXX DEPRECATED
-{
-	return [self batchNodeWithTexture:tex capacity:capacity];
 }
 
 /*
@@ -76,20 +79,11 @@ const NSUInteger defaultCapacity = 29;
 {
 	return [[[self alloc] initWithFile:fileImage capacity:capacity] autorelease];
 }
-+(id)spriteSheetWithFile:(NSString*)fileImage capacity:(NSUInteger)capacity // XXX DEPRECATED
-{
-	return [self batchNodeWithFile:fileImage capacity:capacity];
-}
 
 +(id)batchNodeWithFile:(NSString*) imageFile
 {
 	return [[[self alloc] initWithFile:imageFile capacity:defaultCapacity] autorelease];
 }
-+(id)spriteSheetWithFile:(NSString*) imageFile // XXX DEPRECATED
-{
-	return [self batchNodeWithFile:imageFile];
-}
-
 
 /*
  * init with CCTexture2D
@@ -168,39 +162,22 @@ const NSUInteger defaultCapacity = 29;
 	glPopMatrix();
 }
 
-// XXX deprecated
--(CCSprite*) createSpriteWithRect:(CGRect)rect
-{
-	CCSprite *sprite = [CCSprite spriteWithTexture:textureAtlas_.texture rect:rect];
-	[sprite useBatchNode:self];
-	
-	return sprite;
-}
-
-// XXX deprecated
--(void) initSprite:(CCSprite*)sprite rect:(CGRect)rect
-{
-	[sprite initWithTexture:textureAtlas_.texture rect:rect];
-	[sprite useBatchNode:self];
-}
 
 // override addChild:
--(id) addChild:(CCSprite*)child z:(int)z tag:(int) aTag
+-(void) addChild:(CCSprite*)child z:(NSInteger)z tag:(NSInteger) aTag
 {
 	NSAssert( child != nil, @"Argument must be non-nil");
 	NSAssert( [child isKindOfClass:[CCSprite class]], @"CCSpriteBatchNode only supports CCSprites as children");
 	NSAssert( child.texture.name == textureAtlas_.texture.name, @"CCSprite is not using the same texture id");
 	
-	id ret = [super addChild:child z:z tag:aTag];
+	[super addChild:child z:z tag:aTag];
 	
 	NSUInteger index = [self atlasIndexForChild:child atZ:z];
-	[self insertChild:child inAtlasAtIndex:index];
-	
-	return ret;
+	[self insertChild:child inAtlasAtIndex:index];	
 }
 
 // override reorderChild
--(void) reorderChild:(CCSprite*)child z:(int)z
+-(void) reorderChild:(CCSprite*)child z:(NSInteger)z
 {
 	NSAssert( child != nil, @"Child must be non-nil");
 	NSAssert( [children_ containsObject:child], @"Child doesn't belong to Sprite" );
@@ -247,63 +224,49 @@ const NSUInteger defaultCapacity = 29;
 }
 
 #pragma mark CCSpriteBatchNode - draw
-#pragma mark CCSpriteBatchNode - draw
 -(void) draw
 {
+	[super draw];
+
+	// Optimization: Fast Dispatch	
 	if( textureAtlas_.totalQuads == 0 )
-		return;
+		return;	
 	
-	// Optimization: Fast Dispatch
-	typedef BOOL (*DIRTY_IMP)(id, SEL);
-	typedef BOOL (*UPDATE_IMP)(id, SEL);
-	SEL selDirty = @selector(dirty);
-	SEL selUpdate = @selector(updateTransform);
-	DIRTY_IMP dirtyMethod = nil;
-	UPDATE_IMP updateMethod = nil;
-	
-	ccArray *array = descendants_->data;
 	CCSprite *child;
+	ccArray *array = descendants_->data;
 	
-	// is there any child ?. compare with array->num
-	// if so, compile the isDirty and update methods
-	if( array->num > 0 ) {
-		child = array->arr[0];
-		dirtyMethod = (DIRTY_IMP) [child methodForSelector:selDirty];
-		updateMethod = (UPDATE_IMP) [child methodForSelector:selUpdate];
-	}
-	
-	// itera
-	id *arr = array->arr;
 	NSUInteger i = array->num;
-	while (i-- > 0) {
-		child = *arr++;
+	id *arr = array->arr;
+
+	if( i > 0 ) {
 		
-		// fast dispatch
-		if( dirtyMethod(child, selDirty) )
-			updateMethod(child, selUpdate);
-		
+		while (i-- > 0) {
+			child = *arr++;
+			
+			// fast dispatch
+			child->updateMethod(child, selUpdate);
+			
 #if CC_SPRITEBATCHNODE_DEBUG_DRAW
-		//Issue #528
-		CGRect rect = [child boundingBox];
-		CGPoint vertices[4]={
-			ccp(rect.origin.x,rect.origin.y),
-			ccp(rect.origin.x+rect.size.width,rect.origin.y),
-			ccp(rect.origin.x+rect.size.width,rect.origin.y+rect.size.height),
-			ccp(rect.origin.x,rect.origin.y+rect.size.height),
-		};
-		ccDrawPoly(vertices, 4, YES);
+			//Issue #528
+			CGRect rect = [child boundingBox];
+			CGPoint vertices[4]={
+				ccp(rect.origin.x,rect.origin.y),
+				ccp(rect.origin.x+rect.size.width,rect.origin.y),
+				ccp(rect.origin.x+rect.size.width,rect.origin.y+rect.size.height),
+				ccp(rect.origin.x,rect.origin.y+rect.size.height),
+			};
+			ccDrawPoly(vertices, 4, YES);
 #endif // CC_SPRITEBATCHNODE_DEBUG_DRAW
+		}
 	}
 	
 	// Default GL states: GL_TEXTURE_2D, GL_VERTEX_ARRAY, GL_COLOR_ARRAY, GL_TEXTURE_COORD_ARRAY
 	// Needed states: GL_TEXTURE_2D, GL_VERTEX_ARRAY, GL_COLOR_ARRAY, GL_TEXTURE_COORD_ARRAY
 	// Unneeded states: -
 	
-	BOOL newBlend = NO;
-	if( blendFunc_.src != CC_BLEND_SRC || blendFunc_.dst != CC_BLEND_DST ) {
-		newBlend = YES;
+	BOOL newBlend = blendFunc_.src != CC_BLEND_SRC || blendFunc_.dst != CC_BLEND_DST;
+	if( newBlend )
 		glBlendFunc( blendFunc_.src, blendFunc_.dst );
-	}
 	
 	[textureAtlas_ drawQuads];
 	if( newBlend )
@@ -318,15 +281,15 @@ const NSUInteger defaultCapacity = 29;
 	// this is likely computationally expensive
 	NSUInteger quantity = (textureAtlas_.capacity + 1) * 4 / 3;
 	
-	CCLOG(@"cocos2d: CCSpriteBatchNode: resizing TextureAtlas capacity from [%u] to [%u].",
-		  (unsigned int)textureAtlas_.capacity,
-		  (unsigned int)quantity);
+	CCLOG(@"cocos2d: CCSpriteBatchNode: resizing TextureAtlas capacity from [%lu] to [%lu].",
+		  (long)textureAtlas_.capacity,
+		  (long)quantity);
 	
 	
 	if( ! [textureAtlas_ resizeCapacity:quantity] ) {
 		// serious problems
 		CCLOG(@"cocos2d: WARNING: Not enough memory to resize the atlas");
-		NSAssert(NO,@"XXX: SpriteSheet#increaseAtlasCapacity SHALL handle this assert");
+		NSAssert(NO,@"XXX: CCSpriteBatchNode#increaseAtlasCapacity SHALL handle this assert");
 	}	
 }
 
@@ -376,7 +339,7 @@ const NSUInteger defaultCapacity = 29;
 }
 
 
--(NSUInteger)atlasIndexForChild:(CCSprite*)sprite atZ:(int)z
+-(NSUInteger)atlasIndexForChild:(CCSprite*)sprite atZ:(NSInteger)z
 {
 	CCArray *brothers = [[sprite parent] children];
 	NSUInteger childIndex = [brothers indexOfObject:sprite];
@@ -407,11 +370,12 @@ const NSUInteger defaultCapacity = 29;
 			return p.atlasIndex;
 		else
 			return p.atlasIndex+1;
+		
 	} else {
 		// previous & sprite belong to the same branch
-		if( ( previous.zOrder < 0 && z < 0 )|| (previous.zOrder >= 0 && z >= 0) ) {
+		if( ( previous.zOrder < 0 && z < 0 )|| (previous.zOrder >= 0 && z >= 0) )
 			return [self highestAtlasIndexInChild:previous] + 1;
-		}
+		
 		// else (previous < 0 and sprite >= 0 )
 		CCSprite *p = (CCSprite*) sprite.parent;
 		return p.atlasIndex + 1;
@@ -449,8 +413,8 @@ const NSUInteger defaultCapacity = 29;
 	
 	// add children recursively
 	CCARRAY_FOREACH(sprite.children, child){
-		NSUInteger index = [self atlasIndexForChild:child atZ: child.zOrder];
-		[self insertChild:child inAtlasAtIndex:index];
+		NSUInteger idx = [self atlasIndexForChild:child atZ: child.zOrder];
+		[self insertChild:child inAtlasAtIndex:idx];
 	}
 }
 

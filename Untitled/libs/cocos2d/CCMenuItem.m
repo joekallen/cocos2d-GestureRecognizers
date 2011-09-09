@@ -1,7 +1,8 @@
 /*
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
- * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2008-2011 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,19 +30,15 @@
 #import "CCActionInterval.h"
 #import "CCSprite.h"
 #import "Support/CGPointExtension.h"
+#import "CCBlockSupport.h"
 
-static int _fontSize = kItemSize;
+	static NSUInteger _fontSize = kCCItemSize;
 static NSString *_fontName = @"Marker Felt";
 static BOOL _fontNameRelease = NO;
 
-enum {
-	kCurrentItem = 0xc0c05001,
-};
 
-enum {
-	kZoomActionTag = 0xc0c05002,
-};
-
+const uint32_t	kCurrentItem = 0xc0c05001;
+const uint32_t	kZoomActionTag = 0xc0c05002;
 
 
 #pragma mark -
@@ -70,18 +67,18 @@ enum {
 		NSMethodSignature * sig = nil;
 		
 		if( rec && cb ) {
-			sig = [[rec class] instanceMethodSignatureForSelector:cb];
+			sig = [rec methodSignatureForSelector:cb];
 			
-			invocation = nil;
-			invocation = [NSInvocation invocationWithMethodSignature:sig];
-			[invocation setTarget:rec];
-			[invocation setSelector:cb];
+			invocation_ = nil;
+			invocation_ = [NSInvocation invocationWithMethodSignature:sig];
+			[invocation_ setTarget:rec];
+			[invocation_ setSelector:cb];
 #if NS_BLOCKS_AVAILABLE
 			if ([sig numberOfArguments] == 3) 
 #endif
-			[invocation setArgument:&self atIndex:2];
+			[invocation_ setArgument:&self atIndex:2];
 			
-			[invocation retain];
+			[invocation_ retain];
 		}
 		
 		isEnabled_ = YES;
@@ -98,7 +95,7 @@ enum {
 }
 
 -(id) initWithBlock:(void(^)(id sender))block {
-	block_ = BLOCK_RETAIN(block);
+	block_ = [block copy];
 	return [self initWithTarget:block_ selector:@selector(ccCallbackBlockWithSender:)];
 }
 
@@ -106,7 +103,7 @@ enum {
 
 -(void) dealloc
 {
-	[invocation release];
+	[invocation_ release];
 
 #if NS_BLOCKS_AVAILABLE
 	[block_ release];
@@ -128,7 +125,7 @@ enum {
 -(void) activate
 {
 	if(isEnabled_)
-        [invocation invoke];
+        [invocation_ invoke];
 }
 
 -(void) setIsEnabled: (BOOL)enabled
@@ -143,10 +140,11 @@ enum {
 
 -(CGRect) rect
 {
-	return CGRectMake( position_.x - contentSizeInPixels_.width*anchorPoint_.x,
-					  position_.y - contentSizeInPixels_.height*anchorPoint_.y,
-					  contentSizeInPixels_.width, contentSizeInPixels_.height);
+	return CGRectMake( position_.x - contentSize_.width*anchorPoint_.x,
+					  position_.y - contentSize_.height*anchorPoint_.y,
+					  contentSize_.width, contentSize_.height);	
 }
+
 @end
 
 
@@ -162,6 +160,11 @@ enum {
 	return [[[self alloc] initWithLabel:label target:target selector:selector] autorelease];
 }
 
++(id) itemWithLabel:(CCNode<CCLabelProtocol,CCRGBAProtocol>*)label
+{
+	return [[[self alloc] initWithLabel:label target:nil selector:NULL] autorelease];
+}
+
 -(id) initWithLabel:(CCNode<CCLabelProtocol,CCRGBAProtocol>*)label target:(id)target selector:(SEL)selector
 {
 	if( (self=[super initWithTarget:target selector:selector]) ) {
@@ -169,6 +172,7 @@ enum {
 		colorBackup = ccWHITE;
 		disabledColor_ = ccc3( 126,126,126);
 		self.label = label;
+		
 	}
 	return self;
 }
@@ -180,7 +184,7 @@ enum {
 }
 
 -(id) initWithLabel:(CCNode<CCLabelProtocol,CCRGBAProtocol>*)label block:(void(^)(id sender))block {
-	block_ = BLOCK_RETAIN(block);
+	block_ = [block copy];
 	return [self initWithLabel:label target:block_ selector:@selector(ccCallbackBlockWithSender:)];
 }
 
@@ -192,15 +196,15 @@ enum {
 }
 -(void) setLabel:(CCNode<CCLabelProtocol, CCRGBAProtocol>*) label
 {
-	[label_ release];
-	label_ = [label retain];
-	[self setContentSize:[label_ contentSize]];
-}
+	if( label != label_ ) {
+		[self removeChild:label_ cleanup:YES];
+		[self addChild:label];
+		
+		label_ = label;
+		label_.anchorPoint = ccp(0,0);
 
-- (void) dealloc
-{
-	[label_ release];
-	[super dealloc];
+		[self setContentSize:[label_ contentSize]];
+	}
 }
 
 -(void) setString:(NSString *)string
@@ -224,8 +228,13 @@ enum {
 	// subclass to change the default action
 	if(isEnabled_) {	
 		[super selected];
-		[self stopActionByTag:kZoomActionTag];
-		originalScale_ = self.scale;
+
+		CCAction *action = [self getActionByTag:kZoomActionTag];
+		if( action )
+			[self stopAction:action];
+		else
+			originalScale_ = self.scale;
+
 		CCAction *zoomAction = [CCScaleTo actionWithDuration:0.1f scale:originalScale_ * 1.2f];
 		zoomAction.tag = kZoomActionTag;
 		[self runAction:zoomAction];
@@ -256,11 +265,6 @@ enum {
 	}
     
 	[super setIsEnabled:enabled];
-}
-
--(void) draw
-{
-	[label_ draw];
 }
 
 - (void) setOpacity: (GLubyte)opacity
@@ -298,7 +302,7 @@ enum {
 
 -(id) initFromString: (NSString*) value charMapFile:(NSString*) charMapFile itemWidth:(int)itemWidth itemHeight:(int)itemHeight startCharMap:(char)startCharMap target:(id) rec selector:(SEL) cb
 {
-	NSAssert( [value length] != 0, @"value lenght must be greater than 0");
+	NSAssert( [value length] != 0, @"value length must be greater than 0");
 	
 	CCLabelAtlas *label = [[CCLabelAtlas alloc] initWithString:value charMapFile:charMapFile itemWidth:itemWidth itemHeight:itemHeight startCharMap:startCharMap];
 	[label autorelease];
@@ -316,7 +320,7 @@ enum {
 }
 
 -(id) initFromString:(NSString*)value charMapFile:(NSString*)charMapFile itemWidth:(int)itemWidth itemHeight:(int)itemHeight startCharMap:(char)startCharMap block:(void(^)(id sender))block {
-	block_ = BLOCK_RETAIN(block);
+	block_ = [block copy];
 	return [self initFromString:value charMapFile:charMapFile itemWidth:itemWidth itemHeight:itemHeight startCharMap:startCharMap target:block_ selector:@selector(ccCallbackBlockWithSender:)];
 }
 #endif // NS_BLOCKS_AVAILABLE
@@ -333,12 +337,12 @@ enum {
 
 @implementation CCMenuItemFont
 
-+(void) setFontSize: (int) s
++(void) setFontSize: (NSUInteger) s
 {
 	_fontSize = s;
 }
 
-+(int) fontSize
++(NSUInteger) fontSize
 {
 	return _fontSize;
 }
@@ -369,9 +373,12 @@ enum {
 
 -(id) initFromString: (NSString*) value target:(id) rec selector:(SEL) cb
 {
-	NSAssert( [value length] != 0, @"Value lenght must be greater than 0");
+	NSAssert( [value length] != 0, @"Value length must be greater than 0");
 	
-	CCLabelTTF *label = [CCLabelTTF labelWithString:value fontName:_fontName fontSize:_fontSize];
+	fontName_ = [_fontName copy];
+	fontSize_ = _fontSize;
+	
+	CCLabelTTF *label = [CCLabelTTF labelWithString:value fontName:fontName_ fontSize:fontSize_];
 
 	if((self=[super initWithLabel:label target:rec selector:cb]) ) {
 		// do something ?
@@ -380,21 +387,50 @@ enum {
 	return self;
 }
 
+-(void) recreateLabel
+{
+	CCLabelTTF *label = [CCLabelTTF labelWithString:[label_ string] fontName:fontName_ fontSize:fontSize_];
+	self.label = label;
+}
+
+-(void) setFontSize: (NSUInteger) size
+{
+	fontSize_ = size;
+	[self recreateLabel];
+}
+
+-(NSUInteger) fontSize
+{
+	return fontSize_;
+}
+
+-(void) setFontName: (NSString*) fontName
+{
+	if (fontName_)
+		[fontName_ release];
+
+	fontName_ = [fontName copy];
+	[self recreateLabel];
+}
+
+-(NSString*) fontName
+{
+	return fontName_;
+}
+
 #if NS_BLOCKS_AVAILABLE
-+(id) itemFromString: (NSString*) value block:(void(^)(id sender))block {
++(id) itemFromString: (NSString*) value block:(void(^)(id sender))block
+{
 	return [[[self alloc] initFromString:value block:block] autorelease];
 }
 
--(id) initFromString: (NSString*) value block:(void(^)(id sender))block {
-	block_ = BLOCK_RETAIN(block);
+-(id) initFromString: (NSString*) value block:(void(^)(id sender))block
+{
+	block_ = [block copy];
 	return [self initFromString:value target:block_ selector:@selector(ccCallbackBlockWithSender:)];
 }
 #endif // NS_BLOCKS_AVAILABLE
 
--(void) dealloc
-{
-	[super dealloc];
-}
 @end
 
 #pragma mark -
@@ -438,36 +474,48 @@ enum {
 }
 
 -(id) initFromNormalSprite:(CCNode<CCRGBAProtocol>*)normalSprite selectedSprite:(CCNode<CCRGBAProtocol>*)selectedSprite disabledSprite:(CCNode<CCRGBAProtocol>*)disabledSprite block:(void(^)(id sender))block {
-	block_ = BLOCK_RETAIN(block);
+	block_ = [block copy];
 	return [self initFromNormalSprite:normalSprite selectedSprite:selectedSprite disabledSprite:disabledSprite target:block_ selector:@selector(ccCallbackBlockWithSender:)];
 }
 #endif // NS_BLOCKS_AVAILABLE
 
 
--(void) dealloc
+-(void) setNormalImage:(CCNode <CCRGBAProtocol>*)image
 {
-	[normalImage_ release];
-	[selectedImage_ release];
-	[disabledImage_ release];
-	
-	[super dealloc];
+	if( image != normalImage_ ) {
+		image.anchorPoint = ccp(0,0);
+		image.visible = YES;
+		
+		[self removeChild:normalImage_ cleanup:YES];
+		[self addChild:image];
+		
+		normalImage_ = image;
+	}
 }
 
--(void) draw
+-(void) setSelectedImage:(CCNode <CCRGBAProtocol>*)image
 {
-	if(isEnabled_) {
-		if( isSelected_ )
-			[selectedImage_ draw];
-		else
-			[normalImage_ draw];
+	if( image != selectedImage_ ) {
+		image.anchorPoint = ccp(0,0);
+		image.visible = NO;
 		
-	} else {
-		if(disabledImage_ != nil)
-			[disabledImage_ draw];
+		[self removeChild:selectedImage_ cleanup:YES];
+		[self addChild:image];
 		
-		// disabled image was not provided
-		else
-			[normalImage_ draw];
+		selectedImage_ = image;
+	}
+}
+
+-(void) setDisabledImage:(CCNode <CCRGBAProtocol>*)image
+{
+	if( image != disabledImage_ ) {
+		image.anchorPoint = ccp(0,0);
+		image.visible = NO;
+		
+		[self removeChild:disabledImage_ cleanup:YES];
+		[self addChild:image];
+		
+		disabledImage_ = image;
 	}
 }
 
@@ -490,10 +538,59 @@ enum {
 {
 	return [normalImage_ opacity];
 }
+
 -(ccColor3B) color
 {
 	return [normalImage_ color];
 }
+
+-(void) selected
+{
+	[super selected];
+
+	if( selectedImage_ ) {
+		[normalImage_ setVisible:NO];
+		[selectedImage_ setVisible:YES];
+		[disabledImage_ setVisible:NO];
+		
+	} else { // there is not selected image
+	
+		[normalImage_ setVisible:YES];
+		[selectedImage_ setVisible:NO];
+		[disabledImage_ setVisible:NO];		
+	}
+}
+
+-(void) unselected
+{
+	[super unselected];
+	[normalImage_ setVisible:YES];
+	[selectedImage_ setVisible:NO];
+	[disabledImage_ setVisible:NO];
+}
+
+-(void) setIsEnabled:(BOOL)enabled
+{
+	[super setIsEnabled:enabled];
+
+	if( enabled ) {
+		[normalImage_ setVisible:YES];
+		[selectedImage_ setVisible:NO];
+		[disabledImage_ setVisible:NO];
+
+	} else {
+		if( disabledImage_ ) {
+			[normalImage_ setVisible:NO];
+			[selectedImage_ setVisible:NO];
+			[disabledImage_ setVisible:YES];		
+		} else {
+			[normalImage_ setVisible:YES];
+			[selectedImage_ setVisible:NO];
+			[disabledImage_ setVisible:NO];
+		}
+	}
+}
+
 @end
 
 #pragma mark -
@@ -524,9 +621,11 @@ enum {
 -(id) initFromNormalImage: (NSString*) normalI selectedImage:(NSString*)selectedI disabledImage: (NSString*) disabledI target:(id)t selector:(SEL)sel
 {
 	CCNode<CCRGBAProtocol> *normalImage = [CCSprite spriteWithFile:normalI];
-	CCNode<CCRGBAProtocol> *selectedImage = [CCSprite spriteWithFile:selectedI]; 
+	CCNode<CCRGBAProtocol> *selectedImage = nil;
 	CCNode<CCRGBAProtocol> *disabledImage = nil;
 
+	if( selectedI )
+		selectedImage = [CCSprite spriteWithFile:selectedI]; 
 	if(disabledI)
 		disabledImage = [CCSprite spriteWithFile:disabledI];
 
@@ -544,7 +643,7 @@ enum {
 }
 
 -(id) initFromNormalImage: (NSString*) value selectedImage:(NSString*)value2 disabledImage:(NSString*) value3 block:(void(^)(id sender))block {
-	block_ = BLOCK_RETAIN(block);
+	block_ = [block copy];
 	return [self initFromNormalImage:value selectedImage:value2 disabledImage:value3 target:block_ selector:@selector(ccCallbackBlockWithSender:)];
 }
 
@@ -561,7 +660,7 @@ enum {
 @implementation CCMenuItemToggle
 
 @synthesize subItems = subItems_;
-@synthesize opacity=opacity_, color=color_;
+@synthesize opacity = opacity_, color = color_;
 
 +(id) itemWithTarget: (id)t selector: (SEL)sel items: (CCMenuItem*) item, ...
 {
@@ -608,7 +707,7 @@ enum {
 }
 
 -(id) initWithBlock:(void (^)(id))block items:(CCMenuItem*)item vaList:(va_list)args {
-	block_ = BLOCK_RETAIN(block);
+	block_ = [block copy];
 	return [self initWithTarget:block_ selector:@selector(ccCallbackBlockWithSender:) items:item vaList:args];
 }
 
