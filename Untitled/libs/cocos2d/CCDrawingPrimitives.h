@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +50,7 @@ extern "C" {
   - ccDrawCubicBezier
 
  You can change the color, width and other property by calling the
-   glColor4ub(), glLineWitdh(), glPointSize().
+   glColor4ub(), glLineWidth(), glPointSize().
  
  @warning These functions draws the Line, Point, Polygon, immediately. They aren't batched. If you are going to make a game that depends on these primitives, I suggest creating a batch.
  */
@@ -61,7 +62,7 @@ void ccDrawPoint( CGPoint point );
 /** draws an array of points.
  @since v0.7.2
  */
-void ccDrawPoints( CGPoint *points, NSUInteger numberOfPoints );
+void ccDrawPoints( const CGPoint *points, NSUInteger numberOfPoints );
 
 /** draws a line given the origin and destination point measured in points. */
 void ccDrawLine( CGPoint origin, CGPoint destination );
@@ -69,7 +70,7 @@ void ccDrawLine( CGPoint origin, CGPoint destination );
 /** draws a poligon given a pointer to CGPoint coordiantes and the number of vertices measured in points.
  The polygon can be closed or open
  */
-void ccDrawPoly( CGPoint *vertices, NSUInteger numOfVertices, BOOL closePolygon );
+void ccDrawPoly( const CGPoint *vertices, NSUInteger numOfVertices, BOOL closePolygon );
 
 /** draws a circle given the center, radius and number of segments measured in points */
 void ccDrawCircle( CGPoint center, float radius, float angle, NSUInteger segments, BOOL drawLineToCenter);

@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,8 +39,8 @@
  */
 
 // 0x00 HI ME LO
-// 00   00 99 05
-#define COCOS2D_VERSION 0x00009905
+// 00   01 00 01
+#define COCOS2D_VERSION 0x00010001
 
 #import <Availability.h>
 
@@ -62,9 +63,10 @@
 #import "CCActionProgressTimer.h"
 #import "CCActionPageTurn3D.h"
 
+#import "CCAnimation.h"
+#import "CCAnimationCache.h"
 #import "CCSprite.h"
 #import "CCSpriteFrame.h"
-#import "CCSpriteSheet.h"
 #import "CCSpriteBatchNode.h"
 #import "CCSpriteFrameCache.h"
 
@@ -150,9 +152,11 @@
 #endif // CC_ENABLE_PROFILERS
 
 
-// compatibility with v0.8
-#import "CCCompatibility.h"
-
-
 // free functions
 NSString * cocos2dVersion(void);
+
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+#ifndef __IPHONE_4_0
+#error "If you are targeting iPad, you should set BASE SDK = 4.0 (or 4.1, or 4.2), and set the 'iOS deploy target' = 3.2"
+#endif
+#endif

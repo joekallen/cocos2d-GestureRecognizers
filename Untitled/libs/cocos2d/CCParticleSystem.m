@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -62,7 +63,7 @@
 
 @implementation CCParticleSystem
 @synthesize active, duration;
-@synthesize centerOfGravity, posVar;
+@synthesize sourcePosition, posVar;
 @synthesize particleCount;
 @synthesize life, lifeVar;
 @synthesize angle, angleVar;
@@ -157,6 +158,12 @@
 		posVar.y = [[dictionary valueForKey:@"sourcePositionVariancey"] floatValue];
 				
 		
+		// Spinning
+		startSpin = [[dictionary valueForKey:@"rotationStart"] floatValue];
+		startSpinVar = [[dictionary valueForKey:@"rotationStartVariance"] floatValue];
+		endSpin = [[dictionary valueForKey:@"rotationEnd"] floatValue];
+		endSpinVar = [[dictionary valueForKey:@"rotationEndVariance"] floatValue];
+		
 		emitterMode_ = [[dictionary valueForKey:@"emitterType"] intValue];
 
 		// Mode A: Gravity + tangential accel + radial accel
@@ -214,19 +221,23 @@
 		// Try to get the texture from the cache
 		NSString *textureName = [dictionary valueForKey:@"textureFileName"];
 
-		self.texture = [[CCTextureCache sharedTextureCache] addImage:textureName];
+		CCTexture2D *tex = [[CCTextureCache sharedTextureCache] addImage:textureName];
 
-		NSString *textureData = [dictionary valueForKey:@"textureImageData"];
+		if( tex )
+			self.texture = tex;
 
-		if ( ! texture_ && textureData) {
+		else {
+
+			NSString *textureData = [dictionary valueForKey:@"textureImageData"];
+			NSAssert( textureData, @"CCParticleSystem: Couldn't load texture");
 			
 			// if it fails, try to get it from the base64-gzipped data			
 			unsigned char *buffer = NULL;
-			NSUInteger len = base64Decode((unsigned char*)[textureData UTF8String], [textureData length], &buffer);
+			int len = base64Decode((unsigned char*)[textureData UTF8String], (unsigned int)[textureData length], &buffer);
 			NSAssert( buffer != NULL, @"CCParticleSystem: error decoding textureImageData");
 				
 			unsigned char *deflated = NULL;
-			NSUInteger deflatedLen = inflateMemory(buffer, len, &deflated);
+			NSUInteger deflatedLen = ccInflateMemory(buffer, len, &deflated);
 			free( buffer );
 				
 			NSAssert( deflated != NULL, @"CCParticleSystem: error ungzipping textureImageData");
@@ -252,7 +263,7 @@
 	return self;
 }
 
--(id) initWithTotalParticles:(int) numberOfParticles
+-(id) initWithTotalParticles:(NSUInteger) numberOfParticles
 {
 	if( (self=[super init]) ) {
 
@@ -332,26 +343,27 @@
 
 	// timeToLive
 	// no negative life. prevent division by 0
-	particle->timeToLive = MAX(0, life + lifeVar * CCRANDOM_MINUS1_1() );
+	particle->timeToLive = life + lifeVar * CCRANDOM_MINUS1_1();
+	particle->timeToLive = MAX(0, particle->timeToLive);
 
 	// position
-	particle->pos.x = centerOfGravity.x + posVar.x * CCRANDOM_MINUS1_1();
+	particle->pos.x = sourcePosition.x + posVar.x * CCRANDOM_MINUS1_1();
 	particle->pos.x *= CC_CONTENT_SCALE_FACTOR();
-	particle->pos.y = centerOfGravity.y + posVar.y * CCRANDOM_MINUS1_1();
+	particle->pos.y = sourcePosition.y + posVar.y * CCRANDOM_MINUS1_1();
 	particle->pos.y *= CC_CONTENT_SCALE_FACTOR();
 	
 	// Color
 	ccColor4F start;
-	start.r = MIN(1, MAX(0, startColor.r + startColorVar.r * CCRANDOM_MINUS1_1() ) );
-	start.g = MIN(1, MAX(0, startColor.g + startColorVar.g * CCRANDOM_MINUS1_1() ) );
-	start.b = MIN(1, MAX(0, startColor.b + startColorVar.b * CCRANDOM_MINUS1_1() ) );
-	start.a = MIN(1, MAX(0, startColor.a + startColorVar.a * CCRANDOM_MINUS1_1() ) );
+	start.r = clampf( startColor.r + startColorVar.r * CCRANDOM_MINUS1_1(), 0, 1);
+	start.g = clampf( startColor.g + startColorVar.g * CCRANDOM_MINUS1_1(), 0, 1);
+	start.b = clampf( startColor.b + startColorVar.b * CCRANDOM_MINUS1_1(), 0, 1);
+	start.a = clampf( startColor.a + startColorVar.a * CCRANDOM_MINUS1_1(), 0, 1);
 	
 	ccColor4F end;
-	end.r = MIN(1, MAX(0, endColor.r + endColorVar.r * CCRANDOM_MINUS1_1() ) );
-	end.g = MIN(1, MAX(0, endColor.g + endColorVar.g * CCRANDOM_MINUS1_1() ) );
-	end.b = MIN(1, MAX(0, endColor.b + endColorVar.b * CCRANDOM_MINUS1_1() ) );
-	end.a = MIN(1, MAX(0, endColor.a + endColorVar.a * CCRANDOM_MINUS1_1() ) );
+	end.r = clampf( endColor.r + endColorVar.r * CCRANDOM_MINUS1_1(), 0, 1);
+	end.g = clampf( endColor.g + endColorVar.g * CCRANDOM_MINUS1_1(), 0, 1);
+	end.b = clampf( endColor.b + endColorVar.b * CCRANDOM_MINUS1_1(), 0, 1);
+	end.a = clampf( endColor.a + endColorVar.a * CCRANDOM_MINUS1_1(), 0, 1);
 	
 	particle->color = start;
 	particle->deltaColor.r = (end.r - start.r) / particle->timeToLive;
@@ -360,7 +372,8 @@
 	particle->deltaColor.a = (end.a - start.a) / particle->timeToLive;
 	
 	// size
-	float startS = MAX(0, startSize + startSizeVar * CCRANDOM_MINUS1_1() ); // no negative size
+	float startS = startSize + startSizeVar * CCRANDOM_MINUS1_1();
+	startS = MAX(0, startS); // No negative value
 	startS *= CC_CONTENT_SCALE_FACTOR();
 	
 	particle->size = startS;
@@ -368,7 +381,7 @@
 		particle->deltaSize = 0;
 	else {
 		float endS = endSize + endSizeVar * CCRANDOM_MINUS1_1();
-		endS = MAX(0, endS);
+		endS = MAX(0, endS);	// No negative values
 		endS *= CC_CONTENT_SCALE_FACTOR();
 		particle->deltaSize = (endS - startS) / particle->timeToLive;
 	}
@@ -382,7 +395,10 @@
 	// position
 	if( positionType_ == kCCPositionTypeFree ) {
 		CGPoint p = [self convertToWorldSpace:CGPointZero];
-		particle->startPos = ccp( p.x * CC_CONTENT_SCALE_FACTOR(), p.y * CC_CONTENT_SCALE_FACTOR() );
+		particle->startPos = ccpMult( p, CC_CONTENT_SCALE_FACTOR() );
+	}
+	else if( positionType_ == kCCPositionTypeRelative ) {
+		particle->startPos = ccpMult( position_, CC_CONTENT_SCALE_FACTOR() );
 	}
 	
 	// direction
@@ -391,10 +407,7 @@
 	// Mode Gravity: A
 	if( emitterMode_ == kCCParticleModeGravity ) {
 
-		
-		CGPoint v;
-		v.y = sinf( a );
-		v.x = cosf( a );
+		CGPoint v = {cosf( a ), sinf( a )};
 		float s = mode.A.speed + mode.A.speedVar * CCRANDOM_MINUS1_1();
 		s *= CC_CONTENT_SCALE_FACTOR();
 		
@@ -484,6 +497,11 @@
 		currentPosition.x *= CC_CONTENT_SCALE_FACTOR();
 		currentPosition.y *= CC_CONTENT_SCALE_FACTOR();
 	}
+	else if( positionType_ == kCCPositionTypeRelative ) {
+		currentPosition = position_;
+		currentPosition.x *= CC_CONTENT_SCALE_FACTOR();
+		currentPosition.y *= CC_CONTENT_SCALE_FACTOR();
+	}
 	
 	while( particleIdx < particleCount )
 	{
@@ -502,6 +520,7 @@
 				// radial acceleration
 				if(p->pos.x || p->pos.y)
 					radial = ccpNormalize(p->pos);
+				
 				tangential = radial;
 				radial = ccpMult(radial, p->mode.A.radialAccel);
 				
@@ -548,7 +567,7 @@
 			
 			CGPoint	newPos;
 			
-			if( positionType_ == kCCPositionTypeFree ) {
+			if( positionType_ == kCCPositionTypeFree || positionType_ == kCCPositionTypeRelative ) {
 				CGPoint diff = ccpSub( currentPosition, p->startPos );
 				newPos = ccpSub(p->pos, diff);
 				

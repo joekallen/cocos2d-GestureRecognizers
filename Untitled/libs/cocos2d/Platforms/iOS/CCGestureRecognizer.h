@@ -17,14 +17,14 @@
 
 @interface CCGestureRecognizer : NSObject <UIGestureRecognizerDelegate,NSCoding>
 {
-  UIGestureRecognizer* gestureRecognizer_;
-  CCNode* node_;
-  
-  id<UIGestureRecognizerDelegate> delegate_;
-  
-  id target_;
-  SEL callback_;
-}
+      UIGestureRecognizer* gestureRecognizer_;
+      CCNode* node_;
+      
+      id<UIGestureRecognizerDelegate> delegate_;
+      
+      id target_;
+      SEL callback_;
+    }
 
 @property(nonatomic,readonly) UIGestureRecognizer* gestureRecognizer;
 @property(nonatomic,assign) CCNode* node;

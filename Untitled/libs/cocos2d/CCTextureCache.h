@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,9 +40,9 @@
  */
 @interface CCTextureCache : NSObject
 {
-	NSMutableDictionary *textures;
-	NSLock				*dictLock;
-	NSLock				*contextLock;
+	NSMutableDictionary *textures_;
+	NSLock				*dictLock_;
+	NSLock				*contextLock_;
 }
 
 /** Retruns ths shared instance of the cache */
@@ -79,6 +80,11 @@
  */
 -(CCTexture2D*) addCGImage: (CGImageRef) image forKey: (NSString *)key;
 
+/** Returns an already created texture. Returns nil if the texture doesn't exist.
+ @since v0.99.5
+ */
+-(CCTexture2D *) textureForKey:(NSString *)key;
+
 /** Purges the dictionary of loaded textures.
  * Call this method if you receive the "Memory Warning"
  * In the short term: it will free some resources preventing your app from being killed
@@ -106,7 +112,7 @@
 @end
 
 
-@interface CCTextureCache (PVRTCSupport)
+@interface CCTextureCache (PVRSupport)
 
 /** Returns a Texture2D object given an PVRTC RAW filename
  * If the file image was not previously loaded, it will create a new CCTexture2D
@@ -122,15 +128,22 @@
 -(CCTexture2D*) addPVRTCImage:(NSString*)fileimage bpp:(int)bpp hasAlpha:(BOOL)alpha width:(int)w;
 #endif // __IPHONE_OS_VERSION_MAX_ALLOWED
 
-/** Returns a Texture2D object given an PVRTC filename
+/** Returns a Texture2D object given an PVR filename.
  * If the file image was not previously loaded, it will create a new CCTexture2D
  *  object and it will return it. Otherwise it will return a reference of a previosly loaded image
  *
- * IMPORTANT: This method is only defined on iOS. It is not supported on the Mac version.
- *
  */
--(CCTexture2D*) addPVRTCImage:(NSString*) filename;
+-(CCTexture2D*) addPVRImage:(NSString*) filename;
 
 @end
 
 
+@interface CCTextureCache (Debug)
+/** Output to CCLOG the current contents of this CCTextureCache
+ * This will attempt to calculate the size of each texture, and the total texture memory in use
+ *
+ * @since v1.0
+ */
+-(void) dumpCachedTextureInfo;
+
+@end

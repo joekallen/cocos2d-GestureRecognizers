@@ -50,13 +50,14 @@ typedef enum {
  The progress can be Radial, Horizontal or vertical.
  @since v0.99.1
  */
-@interface CCProgressTimer : CCNode {
+@interface CCProgressTimer : CCNode
+{
 	CCProgressTimerType	type_;
 	float				percentage_;
 	CCSprite			*sprite_;
 	
 	int					vertexDataCount_;
-	ccV2F_C4F_T2F		*vertexData_;
+	ccV2F_C4B_T2F		*vertexData_;
 }
 
 /**	Change the percentage to change progress. */

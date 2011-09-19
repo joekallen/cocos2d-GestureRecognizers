@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,37 +30,38 @@
 
 /** Base class for CCCamera actions
  */
-@interface CCActionCamera : CCActionInterval <NSCopying> {
+@interface CCActionCamera : CCActionInterval <NSCopying>
+{	
+	float centerXOrig_;
+	float centerYOrig_;
+	float centerZOrig_;
 	
-	float centerXOrig;
-	float centerYOrig;
-	float centerZOrig;
+	float eyeXOrig_;
+	float eyeYOrig_;
+	float eyeZOrig_;
 	
-	float eyeXOrig;
-	float eyeYOrig;
-	float eyeZOrig;
-	
-	float upXOrig;
-	float upYOrig;
-	float upZOrig;
+	float upXOrig_;
+	float upYOrig_;
+	float upZOrig_;
 }
 @end
 
 /** CCOrbitCamera action
  Orbits the camera around the center of the screen using spherical coordinates
  */
-@interface CCOrbitCamera : CCActionCamera <NSCopying> {
-	float radius;
-	float deltaRadius;
-	float angleZ;
-	float deltaAngleZ;
-	float angleX;
-	float deltaAngleX;
+@interface CCOrbitCamera : CCActionCamera <NSCopying>
+{
+	float radius_;
+	float deltaRadius_;
+	float angleZ_;
+	float deltaAngleZ_;
+	float angleX_;
+	float deltaAngleX_;
 	
-	float radZ;
-	float radDeltaZ;
-	float radX;
-	float radDeltaX;
+	float radZ_;
+	float radDeltaZ_;
+	float radX_;
+	float radDeltaX_;
 	
 }
 /** creates a CCOrbitCamera action with radius, delta-radius,  z, deltaZ, x, deltaX */

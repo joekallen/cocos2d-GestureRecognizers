@@ -1,8 +1,10 @@
 /*
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
- * Copyright (c) 2008-2010 Ricardo Quesada
  * Copyright (c) 2009 Leonardo Kasperavičius
+ *
+ * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,17 +48,17 @@
  */
 @interface CCParticleSystemQuad : CCParticleSystem
 {
-	ccV2F_C4F_T2F_Quad	*quads_;		// quads to be rendered
+	ccV2F_C4B_T2F_Quad	*quads_;		// quads to be rendered
 	GLushort			*indices_;		// indices
 #if CC_USES_VBO
 	GLuint				quadsID_;		// VBO id
 #endif
 }
 
-// initialices the indices for the vertices
+/** initialices the indices for the vertices */
 -(void) initIndices;
 
-// initilizes the text coords
+/** initilizes the texture with a rectangle measured Points */
 -(void) initTexCoordsWithRect:(CGRect)rect;
 
 /** Sets a new CCSpriteFrame as particle.
@@ -65,7 +67,7 @@
  */
 -(void)setDisplayFrame:(CCSpriteFrame*)spriteFrame;
 
-/** Sets a new texture with a rect. The rect is in pixels.
+/** Sets a new texture with a rect. The rect is in Points.
  @since v0.99.4
  */
 -(void) setTexture:(CCTexture2D *)texture withRect:(CGRect)rect;

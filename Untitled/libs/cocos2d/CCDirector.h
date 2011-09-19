@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,18 +29,19 @@
 
 // OpenGL related
 #import "Platforms/CCGL.h"
+#import "CCProtocols.h"
 
 /** @typedef ccDirectorProjection
  Possible OpenGL projections used by director
  */
 typedef enum {
-	/// sets a 2D projection (orthogonal projection)
+	/// sets a 2D projection (orthogonal projection).
 	kCCDirectorProjection2D,
 	
 	/// sets a 3D projection with a fovy=60, znear=0.5f and zfar=1500.
 	kCCDirectorProjection3D,
 	
-	/// it does nothing. But if you are using a custom projection set it this value.
+	/// it calls "updateProjection" on the projection delegate.
 	kCCDirectorProjectionCustom,
 	
 	/// Detault projection is 3D projection
@@ -61,15 +63,15 @@ and when to execute the Scenes.
  
  The CCDirector is also resposible for:
   - initializing the OpenGL ES context
-  - setting the OpenGL ES pixel format (default on is RGB565)
-  - setting the OpenGL ES buffer depth (default one is 0-bit)
-  - setting the projection (default one is 2D)
+  - setting the OpenGL pixel format (default on is RGB565)
+  - setting the OpenGL buffer depth (default one is 0-bit)
+  - setting the projection (default one is 3D)
   - setting the orientation (default one is Protrait)
  
  Since the CCDirector is a singleton, the standard way to use it is by calling:
-  - [[CCDirector sharedDirector] xxxx];
+  - [[CCDirector sharedDirector] methodName];
  
- The CCDirector also sets the default OpenGL ES context:
+ The CCDirector also sets the default OpenGL context:
   - GL_TEXTURE_2D is enabled
   - GL_VERTEX_ARRAY is enabled
   - GL_COLOR_ARRAY is enabled
@@ -87,6 +89,8 @@ and when to execute the Scenes.
 	BOOL displayFPS_;
 
 	NSUInteger frames_;
+	NSUInteger totalFrames_;
+
 	ccTime accumDt_;
 	ccTime frameRate_;
 #if	CC_DIRECTOR_FAST_FPS
@@ -98,6 +102,9 @@ and when to execute the Scenes.
 	
 	/* The running scene */
 	CCScene *runningScene_;
+	
+	/* This object will be visited after the scene. Useful to hook a notification node */
+	id notificationNode_;
 	
 	/* will be the next 'runningScene' in the next frame
 	 nextScene is a weak reference. */
@@ -119,6 +126,9 @@ and when to execute the Scenes.
 	/* projection used */
 	ccDirectorProjection projection_;
 	
+	/* Projection protocol delegate */
+	id<CCProjectionProtocol>	projectionDelegate_;
+
 	/* window size in points */
 	CGSize	winSizeInPoints_;
 	
@@ -128,6 +138,7 @@ and when to execute the Scenes.
 	/* the cocos2d running thread */
 	NSThread	*runningThread_;
 
+	// profiler
 #if CC_ENABLE_PROFILERS
 	ccTime accumDtForProfiler_;
 #endif
@@ -155,6 +166,8 @@ and when to execute the Scenes.
  @since v0.8.2
  */
 @property (nonatomic,readwrite) ccDirectorProjection projection;
+/** How many frames were called since the director started */
+@property (nonatomic,readonly) NSUInteger	totalFrames;
 
 /** Whether or not the replaced scene will receive the cleanup message.
  If the new scene is pushed, then the old scene won't receive the "cleanup" message.
@@ -162,6 +175,18 @@ and when to execute the Scenes.
  @since v0.99.0
  */
 @property (nonatomic, readonly) BOOL sendCleanupToScene;
+
+/** This object will be visited after the main scene is visited.
+ This object MUST implement the "visit" selector.
+ Useful to hook a notification object, like CCNotifications (http://github.com/manucorporat/CCNotifications)
+ @since v0.99.5
+ */
+@property (nonatomic, readwrite, retain) id	notificationNode;
+
+/** This object will be called when the OpenGL projection is udpated and only when the kCCDirectorProjectionCustom projection is used.
+ @since v0.99.5
+ */
+@property (nonatomic, readwrite, retain) id<CCProjectionProtocol> projectionDelegate;
 
 /** returns a shared instance of the director */
 +(CCDirector *)sharedDirector;
@@ -262,12 +287,11 @@ and when to execute the Scenes.
 // Memory Helper
 
 /** Removes all the cocos2d data that was cached automatically.
- It will purge the CCTextureCache, CCBitmapFont cache.
+ It will purge the CCTextureCache, CCLabelBMFont cache.
  IMPORTANT: The CCSpriteFrameCache won't be purged. If you want to purge it, you have to purge it manually.
  @since v0.99.3
  */
--(void) purgeCachedData;
- 
+-(void) purgeCachedData; 
 
 // OpenGL Helper
 
@@ -278,5 +302,8 @@ and when to execute the Scenes.
 - (void) setAlphaBlending: (BOOL) on;
 /** enables/disables OpenGL depth test */
 - (void) setDepthTest: (BOOL) on;
+
+// Profiler
+-(void) showProfilers;
 
 @end

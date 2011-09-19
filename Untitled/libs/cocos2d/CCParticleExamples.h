@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +33,7 @@
 // build each architecture with the optimal particle system
 
 // ARMv7, Mac or Simulator use "Quad" particle
-#if defined(__ARM_NEON__) || defined(__MAC_OS_X_VERSION_MAX_ALLOWED) || defined(TARGET_IPHONE_SIMULATOR)
+#if defined(__ARM_NEON__) || defined(__MAC_OS_X_VERSION_MAX_ALLOWED) || TARGET_IPHONE_SIMULATOR
 	#define ARCH_OPTIMAL_PARTICLE_SYSTEM CCParticleSystemQuad
 
 // ARMv6 use "Point" particle

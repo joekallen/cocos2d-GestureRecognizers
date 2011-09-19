@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +33,13 @@
 #import <QuartzCore/CVDisplayLink.h>
 #import "../../CCDirector.h"
 
+enum  {
+	/// If the window is resized, it won't be autoscaled
+	kCCDirectorResize_NoScale,
+	/// If the window is resized, it will be autoscaled (default behavior)
+	kCCDirectorResize_AutoScale,
+};
+
 @interface CCDirector (MacExtension)
 /** converts an NSEvent to GL coordinates */
 -(CGPoint) convertEventToGL:(NSEvent*)event;
@@ -42,7 +50,35 @@
  */
 @interface CCDirectorMac : CCDirector
 {
+	BOOL			isFullScreen_;
+	int				resizeMode_;
+	CGPoint			winOffset_;
+    CGSize			originalWinSize_;
+	
+	NSWindow		*fullScreenWindow_;
+    
+	// cache
+	NSWindow		*windowGLView_;
+    NSView          *superViewGLView_;
+    NSRect          originalWinRect_; // Original size and position
 }
+
+// whether or not the view is in fullscreen mode
+@property (nonatomic, readonly) BOOL isFullScreen;
+
+// resize mode: with or without scaling
+@property (nonatomic, readwrite) int resizeMode;
+
+@property (nonatomic, readwrite) CGSize originalWinSize;
+
+/** Sets the view in fullscreen or window mode */
+- (void) setFullScreen:(BOOL)fullscreen;
+
+/** Converts window size coordiantes to logical coordinates.
+ Useful only if resizeMode is kCCDirectorResize_Scale.
+ If resizeMode is kCCDirectorResize_NoScale, then no conversion will be done.
+*/
+- (CGPoint) convertToLogicalCoordinates:(CGPoint)coordinates;
 @end
 
 

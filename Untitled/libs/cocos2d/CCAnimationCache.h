@@ -1,8 +1,9 @@
 /*
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
- * Copyright (C) 2010 Lam Pham
- *
+ * Copyright (c) 2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
+ * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -23,37 +24,41 @@
  *
  */
 
-
 #import <Foundation/Foundation.h>
-#import "CCProgressTimer.h"
-#import "CCIntervalAction.h"
 
-/**
- Progress to percentage
-@since v0.99.1
-*/
-@interface CCProgressTo : CCIntervalAction <NSCopying>
-{
-	float to_;
-	float from_;
-}
-/** Creates and initializes with a duration and a percent */
-+(id) actionWithDuration:(ccTime)duration percent:(float)percent;
-/** Initializes with a duration and a percent */
--(id) initWithDuration:(ccTime)duration percent:(float)percent;
-@end
+@class CCAnimation;
 
-/**
- Progress from a percentage to another percentage
- @since v0.99.1
+/** Singleton that manages the Animations.
+ It saves in a cache the animations. You should use this class if you want to save your animations in a cache.
+
+ Before v0.99.5, the recommend way was to save them on the CCSprite. Since v0.99.5, you should use this class instead.
+ 
+ @since v0.99.5
  */
-@interface CCProgressFromTo : CCIntervalAction <NSCopying>
+@interface CCAnimationCache : NSObject
 {
-	float to_;
-	float from_;
+	NSMutableDictionary *animations_;
 }
-/** Creates and initializes the action with a duration, a "from" percentage and a "to" percentage */
-+(id) actionWithDuration:(ccTime)duration from:(float)fromPercentage to:(float) toPercentage;
-/** Initializes the action with a duration, a "from" percentage and a "to" percentage */
--(id) initWithDuration:(ccTime)duration from:(float)fromPercentage to:(float) toPercentage;
+
+/** Retruns ths shared instance of the Animation cache */
++ (CCAnimationCache *) sharedAnimationCache;
+
+/** Purges the cache. It releases all the CCAnimation objects and the shared instance.
+ */
++(void)purgeSharedAnimationCache;
+
+/** Adds a CCAnimation with a name.
+ */
+-(void) addAnimation:(CCAnimation*)animation name:(NSString*)name;
+
+/** Deletes a CCAnimation from the cache.
+ */
+-(void) removeAnimationByName:(NSString*)name;
+
+/** Returns a CCAnimation that was previously added.
+ If the name is not found it will return nil.
+ You should retain the returned copy if you are going to use it.
+ */
+-(CCAnimation*) animationByName:(NSString*)name;
+
 @end

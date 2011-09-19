@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2009-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +32,8 @@
  The children will be moved faster / slower than the parent according the the parallax ratio.
  
  */
-@interface CCParallaxNode : CCNode {
+@interface CCParallaxNode : CCNode
+{
 	ccArray				*parallaxArray_;
 	CGPoint				lastPosition;
 }
@@ -43,6 +45,6 @@
  It returns self, so you can chain several addChilds.
  @since v0.8
  */
--(id) addChild: (CCNode*)node z:(int)z parallaxRatio:(CGPoint)c positionOffset:(CGPoint)positionOffset;
+-(void) addChild: (CCNode*)node z:(NSInteger)z parallaxRatio:(CGPoint)c positionOffset:(CGPoint)positionOffset;
 
 @end

@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,16 +35,30 @@
 #import "../../Support/OpenGL_Internal.h"
 #import "../../ccMacros.h"
 
+
+@interface ES1Renderer (private)
+
+- (GLenum) convertPixelFormat:(int) pixelFormat;
+
+@end
+
+
 @implementation ES1Renderer
 
 @synthesize context=context_;
 
-// Create an OpenGL ES 1.1 context
-- (id)initWithDepthFormat:(GLuint)depthFormat
+- (id) initWithDepthFormat:(unsigned int)depthFormat withPixelFormat:(unsigned int)pixelFormat withSharegroup:(EAGLSharegroup*)sharegroup withMultiSampling:(BOOL) multiSampling withNumberOfSamples:(unsigned int) requestedSamples
 {
     if ((self = [super init]))
     {
-        context_ = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES1];
+		if ( sharegroup == nil )
+		{
+			context_ = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES1];
+		}
+		else
+		{
+			context_ = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES1 sharegroup:sharegroup];
+		}
 
         if (!context_ || ![EAGLContext setCurrentContext:context_])
         {
@@ -62,7 +77,7 @@
         glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_RENDERBUFFER_OES, colorRenderbuffer_);
 
 		depthFormat_ = depthFormat;
-
+		
 		if( depthFormat_ ) {
 //			glGenRenderbuffersOES(1, &depthBuffer_);
 //			glBindRenderbufferOES(GL_RENDERBUFFER_OES, depthBuffer_);
@@ -71,6 +86,20 @@
 
 			// default buffer
 //			glBindRenderbufferOES(GL_RENDERBUFFER_OES, colorRenderbuffer_);
+		}
+		
+		pixelFormat_ = pixelFormat;
+		multiSampling_ = multiSampling;	
+		if (multiSampling_)
+		{
+			GLint maxSamplesAllowed;
+			glGetIntegerv(GL_MAX_SAMPLES_APPLE, &maxSamplesAllowed);
+			samplesToUse_ = MIN(maxSamplesAllowed,requestedSamples);
+			
+			/* Create the MSAA framebuffer (offscreen) */
+			glGenFramebuffersOES(1, &msaaFramebuffer_);
+			glBindFramebufferOES(GL_FRAMEBUFFER_OES, msaaFramebuffer_);
+			
 		}
 
 		CHECK_GL_ERROR();
@@ -95,24 +124,56 @@
 
 	CCLOG(@"cocos2d: surface size: %dx%d", (int)backingWidth_, (int)backingHeight_);
 
-	if (depthFormat_) {
+	if (multiSampling_)
+	{
+		
+		if ( msaaColorbuffer_) {
+			glDeleteRenderbuffersOES(1, &msaaColorbuffer_);
+			msaaColorbuffer_ = 0;
+		}
+
+		/* Create the offscreen MSAA color buffer.
+		 After rendering, the contents of this will be blitted into ColorRenderbuffer */
+		
+		//msaaFrameBuffer needs to be binded
+		glBindFramebufferOES(GL_FRAMEBUFFER_OES, msaaFramebuffer_);
+		glGenRenderbuffersOES(1, &msaaColorbuffer_);
+		glBindRenderbufferOES(GL_RENDERBUFFER_OES, msaaColorbuffer_);
+		glRenderbufferStorageMultisampleAPPLE(GL_RENDERBUFFER_OES, samplesToUse_,pixelFormat_ , backingWidth_, backingHeight_);
+		glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_RENDERBUFFER_OES, msaaColorbuffer_);
+
+		if (glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES) != GL_FRAMEBUFFER_COMPLETE_OES)
+		{
+			CCLOG(@"Failed to make complete framebuffer object %x", glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES));
+			return NO;
+		}
+	}
+	
+	if (depthFormat_) 
+	{
 		if( ! depthBuffer_ )
 			glGenRenderbuffersOES(1, &depthBuffer_);
-
+		
 		glBindRenderbufferOES(GL_RENDERBUFFER_OES, depthBuffer_);
-		glRenderbufferStorageOES(GL_RENDERBUFFER_OES, depthFormat_, backingWidth_, backingHeight_);
+		if( multiSampling_ )
+			glRenderbufferStorageMultisampleAPPLE(GL_RENDERBUFFER_OES, samplesToUse_, depthFormat_,backingWidth_, backingHeight_);
+		else
+			glRenderbufferStorageOES(GL_RENDERBUFFER_OES, depthFormat_, backingWidth_, backingHeight_);
 		glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_DEPTH_ATTACHMENT_OES, GL_RENDERBUFFER_OES, depthBuffer_);
-
+		
 		// bind color buffer
 		glBindRenderbufferOES(GL_RENDERBUFFER_OES, colorRenderbuffer_);
-
 	}
-
+	
+	glBindFramebufferOES(GL_FRAMEBUFFER_OES, defaultFramebuffer_);
+	
 	if (glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES) != GL_FRAMEBUFFER_COMPLETE_OES)
 	{
 		CCLOG(@"Failed to make complete framebuffer object %x", glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES));
 		return NO;
 	}
+
+	CHECK_GL_ERROR();
 
     return YES;
 }
@@ -126,6 +187,7 @@
 {
 	return [NSString stringWithFormat:@"<%@ = %08X | size = %ix%i>", [self class], self, backingWidth_, backingHeight_];
 }
+
 
 - (void)dealloc
 {
@@ -150,6 +212,18 @@
 		depthBuffer_ = 0;
 	}
 
+	if ( msaaColorbuffer_)
+	{
+		glDeleteRenderbuffersOES(1, &msaaColorbuffer_);
+		msaaColorbuffer_ = 0;
+	}
+	
+	if ( msaaFramebuffer_)
+	{
+		glDeleteRenderbuffersOES(1, &msaaFramebuffer_);
+		msaaFramebuffer_ = 0;
+	}
+	
     // Tear down context
     if ([EAGLContext currentContext] == context_)
         [EAGLContext setCurrentContext:nil];
@@ -158,6 +232,26 @@
     context_ = nil;
 
     [super dealloc];
+}
+
+- (unsigned int) colorRenderBuffer
+{
+	return colorRenderbuffer_;
+}
+
+- (unsigned int) defaultFrameBuffer
+{
+	return defaultFramebuffer_;
+}
+
+- (unsigned int) msaaFrameBuffer
+{
+	return msaaFramebuffer_;	
+}
+
+- (unsigned int) msaaColorBuffer
+{
+	return msaaColorbuffer_;	
 }
 
 @end

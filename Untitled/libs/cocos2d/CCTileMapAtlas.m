@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +32,7 @@
 @interface CCTileMapAtlas (Private)
 -(void) loadTGAfile:(NSString*)file;
 -(void) calculateItemsToRender;
--(void) updateAtlasValueAt:(ccGridSize)pos withValue:(ccColor3B)value withIndex:(int)idx;
+-(void) updateAtlasValueAt:(ccGridSize)pos withValue:(ccColor3B)value withIndex:(NSUInteger)idx;
 @end
 
 
@@ -77,6 +78,7 @@
 {
 	if( tgaInfo )
 		tgaDestroy(tgaInfo);
+	
 	tgaInfo = nil;
 
 	[posToAtlasIndex release];
@@ -88,8 +90,8 @@
 	NSAssert( tgaInfo != nil, @"tgaInfo must be non-nil");
 
 	itemsToRender = 0;
-	for(int x=0;x < tgaInfo->width; x++ ) {
-		for( int y=0; y < tgaInfo->height; y++ ) {
+	for(int x = 0;x < tgaInfo->width; x++ ) {
+		for(int y = 0; y < tgaInfo->height; y++ ) {
 			ccColor3B *ptr = (ccColor3B*) tgaInfo->imageData;
 			ccColor3B value = ptr[x + y * tgaInfo->width];
 			if( value.r )
@@ -111,9 +113,9 @@
 	
 	tgaInfo = tgaLoad( [path UTF8String] );
 #if 1
-	if( tgaInfo->status != TGA_OK ) {
+	if( tgaInfo->status != TGA_OK )
 		[NSException raise:@"TileMapAtlasLoadTGA" format:@"TileMapAtas cannot load TGA file"];
-	}
+	
 #endif
 }
 
@@ -129,9 +131,9 @@
 	
 	ccColor3B *ptr = (ccColor3B*) tgaInfo->imageData;
 	ccColor3B value = ptr[pos.x + pos.y * tgaInfo->width];
-	if( value.r == 0 ) {
+	if( value.r == 0 )
 		CCLOG(@"cocos2d: Value.r must be non 0.");
-	} else {
+	else {
 		ptr[pos.x + pos.y * tgaInfo->width] = tile;
 		
 		// XXX: this method consumes a lot of memory
@@ -153,12 +155,12 @@
 	return value;	
 }
 
--(void) updateAtlasValueAt:(ccGridSize)pos withValue:(ccColor3B)value withIndex:(int)idx
+-(void) updateAtlasValueAt:(ccGridSize)pos withValue:(ccColor3B)value withIndex:(NSUInteger)idx
 {
 	ccV3F_C4B_T2F_Quad quad;
 
-	int x = pos.x;
-	int y = pos.y;
+	NSInteger x = pos.x;
+	NSInteger y = pos.y;
 	float row = (value.r % itemsPerRow_);
 	float col = (value.r / itemsPerRow_);
 	
@@ -210,8 +212,8 @@
 	
 	int total = 0;
 
-	for(int x=0;x < tgaInfo->width; x++ ) {
-		for( int y=0; y < tgaInfo->height; y++ ) {
+	for(int x = 0;x < tgaInfo->width; x++ ) {
+		for(int y = 0; y < tgaInfo->height; y++ ) {
 			if( total < itemsToRender ) {
 				ccColor3B *ptr = (ccColor3B*) tgaInfo->imageData;
 				ccColor3B value = ptr[x + y * tgaInfo->width];

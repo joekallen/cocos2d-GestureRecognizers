@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,17 +30,12 @@
 #import "CCTextureAtlas.h"
 
 @class CCSpriteBatchNode;
-@class CCSpriteSheet;
-@class CCSpriteSheetInternalOnly;
 @class CCSpriteFrame;
 @class CCAnimation;
 
 #pragma mark CCSprite
 
-enum {
-	/// CCSprite invalid index on the CCSpriteBatchode
-	CCSpriteIndexNotInitialized = 0xffffffff,
-};
+#define CCSpriteIndexNotInitialized 0xffffffff 	/// CCSprite invalid index on the CCSpriteBatchode
 
 /**
  Whether or not an CCSprite will rotate, scale or translate with it's parent.
@@ -54,9 +50,11 @@ typedef enum {
 	CC_HONOR_PARENT_TRANSFORM_ROTATE	=  1 << 1,
 	//! Scale with it's parent
 	CC_HONOR_PARENT_TRANSFORM_SCALE		=  1 << 2,
+	//! Skew with it's parent
+	CC_HONOR_PARENT_TRANSFORM_SKEW		=  1 << 3,
 
 	//! All possible transformation enabled. Default value.
-	CC_HONOR_PARENT_TRANSFORM_ALL		=  CC_HONOR_PARENT_TRANSFORM_TRANSLATE | CC_HONOR_PARENT_TRANSFORM_ROTATE | CC_HONOR_PARENT_TRANSFORM_SCALE,
+	CC_HONOR_PARENT_TRANSFORM_ALL		=  CC_HONOR_PARENT_TRANSFORM_TRANSLATE | CC_HONOR_PARENT_TRANSFORM_ROTATE | CC_HONOR_PARENT_TRANSFORM_SCALE | CC_HONOR_PARENT_TRANSFORM_SKEW,
 
 } ccHonorParentTransform;
 
@@ -80,6 +78,7 @@ typedef enum {
  *    - It supports aliasing / antialiasing
  *    - But the rendering will be slower: 1 draw per children.
  *
+ * The default anchorPoint in CCSprite is (0.5, 0.5).
  */
 @interface CCSprite : CCNode <CCRGBAProtocol, CCTextureProtocol>
 {
@@ -129,17 +128,17 @@ typedef enum {
 	// image is flipped
 	BOOL	flipX_;
 	BOOL	flipY_;
-	
-	
-	// Animations that belong to the sprite
-	NSMutableDictionary *animations_;
+		
+@public
+	// used internally.
+	void (*updateMethod)(id, SEL);
 }
 
 /** whether or not the Sprite needs to be updated in the Atlas */
 @property (nonatomic,readwrite) BOOL dirty;
 /** the quad (tex coords, vertex coords and color) information */
 @property (nonatomic,readonly) ccV3F_C4B_T2F_Quad quad;
-/** The index used on the TextureATlas. Don't modify this value unless you know what you are doing */
+/** The index used on the TextureAtlas. Don't modify this value unless you know what you are doing */
 @property (nonatomic,readwrite) NSUInteger atlasIndex;
 /** returns the rect of the CCSprite in points */
 @property (nonatomic,readonly) CGRect textureRect;
@@ -219,11 +218,6 @@ typedef enum {
  */
 +(id) spriteWithFile:(NSString*)filename rect:(CGRect)rect;
 
-/** Creates an sprite with a CGImageRef.
- @deprecated Use spriteWithCGImage:key: instead. Will be removed in v1.0 final
- */
-+(id) spriteWithCGImage: (CGImageRef)image DEPRECATED_ATTRIBUTE;
-
 /** Creates an sprite with a CGImageRef and a key.
  The key is used by the CCTextureCache to know if a texture was already created with this CGImage.
  For example, a valid key is: @"sprite_frame_01".
@@ -236,8 +230,6 @@ typedef enum {
 /** Creates an sprite with an CCBatchNode and a rect
  */
 +(id) spriteWithBatchNode:(CCSpriteBatchNode*)batchNode rect:(CGRect)rect;
-
-+(id) spriteWithSpriteSheet:(CCSpriteSheetInternalOnly*)spritesheet rect:(CGRect)rect DEPRECATED_ATTRIBUTE;
 
 
 /** Initializes an sprite with a texture.
@@ -273,11 +265,6 @@ typedef enum {
  */
 -(id) initWithFile:(NSString*)filename rect:(CGRect)rect;
 
-/** Initializes an sprite with a CGImageRef
- @deprecated Use spriteWithCGImage:key: instead. Will be removed in v1.0 final
- */
--(id) initWithCGImage: (CGImageRef)image DEPRECATED_ATTRIBUTE;
-
 /** Initializes an sprite with a CGImageRef and a key
  The key is used by the CCTextureCache to know if a texture was already created with this CGImage.
  For example, a valid key is: @"sprite_frame_01".
@@ -286,12 +273,11 @@ typedef enum {
  */
 -(id) initWithCGImage:(CGImageRef)image key:(NSString*)key;
 
-/** Initializes an sprite with an CCSpriteSheet and a rect in points
+/** Initializes an sprite with an CCSpriteBatchNode and a rect in points
  */
 -(id) initWithBatchNode:(CCSpriteBatchNode*)batchNode rect:(CGRect)rect;
--(id) initWithSpriteSheet:(CCSpriteSheetInternalOnly*)spritesheet rect:(CGRect)rect DEPRECATED_ATTRIBUTE;
 
-/** Initializes an sprite with an CCSpriteSheet and a rect in pixels
+/** Initializes an sprite with an CCSpriteBatchNode and a rect in pixels
  @since v0.99.5
  */
 -(id) initWithBatchNode:(CCSpriteBatchNode*)batchNode rectInPixels:(CGRect)rect;
@@ -320,7 +306,6 @@ typedef enum {
  @since v0.99.0
  */
 -(void) useBatchNode:(CCSpriteBatchNode*)batchNode;
--(void) useSpriteSheetRender:(CCSpriteSheetInternalOnly*)spriteSheet DEPRECATED_ATTRIBUTE;
 
 
 #pragma mark CCSprite - Frames
@@ -336,13 +321,10 @@ typedef enum {
 
 #pragma mark CCSprite - Animation
 
-/** changes the display frame based on an animation and an index. */
--(void) setDisplayFrame: (NSString*) animationName index:(int) frameIndex;
-
-/** returns an Animation given it's name. */
--(CCAnimation*)animationByName: (NSString*) animationName;
-
-/** adds an Animation to the Sprite. */
--(void) addAnimation: (CCAnimation*) animation;
+/** changes the display frame with animation name and index.
+ The animation name will be get from the CCAnimationCache
+ @since v0.99.5
+ */
+-(void) setDisplayFrameWithAnimationName:(NSString*)animationName index:(int) frameIndex;
 
 @end

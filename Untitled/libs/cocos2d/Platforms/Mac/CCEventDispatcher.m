@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,10 +30,12 @@
 #elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
 
 #import "CCEventDispatcher.h"
+#import "../../ccConfig.h"
 
 static CCEventDispatcher *sharedDispatcher = nil;
 
 enum  {
+	// mouse
 	kCCImplementsMouseDown			= 1 << 0,
 	kCCImplementsMouseMoved			= 1 << 1,
 	kCCImplementsMouseDragged		= 1 << 2,	
@@ -46,10 +49,16 @@ enum  {
 	kCCImplementsScrollWheel		= 1 << 10,
 	kCCImplementsMouseEntered		= 1 << 11,
 	kCCImplementsMouseExited		= 1 << 12,
-		
-	
-	kCCImplementsKeyUp = 1 << 0,
-	kCCImplementsKeyDown = 1 << 1,
+
+	kCCImplementsTouchesBegan		= 1 << 13,
+	kCCImplementsTouchesMoved		= 1 << 14,
+	kCCImplementsTouchesEnded		= 1 << 15,
+	kCCImplementsTouchesCancelled	        = 1 << 16,
+
+	// keyboard
+	kCCImplementsKeyUp				= 1 << 0,
+	kCCImplementsKeyDown			= 1 << 1,
+	kCCImplementsFlagsChanged		= 1 << 2,
 };
 
 
@@ -60,6 +69,21 @@ typedef struct _listEntry
 	NSInteger			priority;
 	NSUInteger			flags;
 } tListEntry;
+
+
+#if CC_DIRECTOR_MAC_USE_DISPLAY_LINK_THREAD
+
+#define QUEUE_EVENT_MAX 128
+struct _eventQueue {
+	SEL		selector;
+	NSEvent	*event;
+};
+
+static struct	_eventQueue eventQueue[QUEUE_EVENT_MAX];
+static int		eventQueueCount;
+
+#endif // CC_DIRECTOR_MAC_USE_DISPLAY_LINK_THREAD
+
 
 @implementation CCEventDispatcher
 
@@ -94,6 +118,11 @@ typedef struct _listEntry
 		// delegates
 		keyboardDelegates_ = NULL;
 		mouseDelegates_ = NULL;
+                touchDelegates_ = NULL;
+		
+#if	CC_DIRECTOR_MAC_USE_DISPLAY_LINK_THREAD
+		eventQueueCount = 0;
+#endif
 	}
 	
 	return self;
@@ -213,6 +242,7 @@ typedef struct _listEntry
 	
 	flags |= ( [delegate respondsToSelector:@selector(ccKeyUp:)] ? kCCImplementsKeyUp : 0 );
 	flags |= ( [delegate respondsToSelector:@selector(ccKeyDown:)] ? kCCImplementsKeyDown : 0 );
+	flags |= ( [delegate respondsToSelector:@selector(ccFlagsChanged:)] ? kCCImplementsFlagsChanged : 0 );
 	
 	[self addDelegate:delegate priority:priority flags:flags list:&keyboardDelegates_];
 }
@@ -226,6 +256,29 @@ typedef struct _listEntry
 {
 	[self removeAllDelegatesFromList:&keyboardDelegates_];
 }
+
+-(void) addTouchDelegate:(id<CCTouchEventDelegate>) delegate priority:(NSInteger)priority
+{
+	NSUInteger flags = 0;
+	
+	flags |= ( [delegate respondsToSelector:@selector(ccTouchesBeganWithEvent:)] ? kCCImplementsTouchesBegan : 0 );
+	flags |= ( [delegate respondsToSelector:@selector(ccTouchesMovedWithEvent:)] ? kCCImplementsTouchesMoved : 0 );
+	flags |= ( [delegate respondsToSelector:@selector(ccTouchesEndedWithEvent:)] ? kCCImplementsTouchesEnded : 0 );
+	flags |= ( [delegate respondsToSelector:@selector(ccTouchesCancelledWithEvent:)] ? kCCImplementsTouchesCancelled : 0 );
+	
+	[self addDelegate:delegate priority:priority flags:flags list:&touchDelegates_];
+}
+
+-(void) removeTouchDelegate:(id) delegate
+{
+	[self removeDelegate:delegate fromList:&touchDelegates_];
+}
+
+-(void) removeAllTouchDelegates
+{
+	[self removeAllDelegatesFromList:&touchDelegates_];
+}
+
 
 #pragma mark CCEventDispatcher - Mouse events
 //
@@ -475,35 +528,118 @@ typedef struct _listEntry
 	}
 }
 
+- (void)flagsChanged:(NSEvent *)event
+{
+	if( dispatchEvents_ ) {
+		tListEntry *entry, *tmp;
+		
+		DL_FOREACH_SAFE( keyboardDelegates_, entry, tmp ) {
+			if ( entry->flags & kCCImplementsFlagsChanged ) {
+				void *swallows = [entry->delegate performSelector:@selector(ccFlagsChanged:) withObject:event];
+				if( swallows )
+					break;
+			}
+		}
+	}
+}
+
+
 #pragma mark CCEventDispatcher - Touch events
 
 - (void)touchesBeganWithEvent:(NSEvent *)event
 {
-	if (dispatchEvents_ ) {
-		NSLog(@"Touch Events: Not supported yet");
-	}
+	if( dispatchEvents_ ) {
+		tListEntry *entry, *tmp;
+		
+		DL_FOREACH_SAFE( touchDelegates_, entry, tmp ) {
+			if ( entry->flags & kCCImplementsTouchesBegan) {
+				void *swallows = [entry->delegate performSelector:@selector(ccTouchesBeganWithEvent:) withObject:event];
+				if( swallows )
+					break;
+			}
+		}
+	}	
 }
 
 - (void)touchesMovedWithEvent:(NSEvent *)event
 {
-	if (dispatchEvents_ ) {
-		NSLog(@"Touch Events: Not supported yet");
-	}
+	if( dispatchEvents_ ) {
+		tListEntry *entry, *tmp;
+		
+		DL_FOREACH_SAFE( touchDelegates_, entry, tmp ) {
+			if ( entry->flags & kCCImplementsTouchesMoved) {
+				void *swallows = [entry->delegate performSelector:@selector(ccTouchesMovedWithEvent:) withObject:event];
+				if( swallows )
+					break;
+			}
+		}
+	}	
 }
 
 - (void)touchesEndedWithEvent:(NSEvent *)event
 {
-	if (dispatchEvents_ ) {
-		NSLog(@"Touch Events: Not supported yet");
-	}
+	if( dispatchEvents_ ) {
+		tListEntry *entry, *tmp;
+		
+		DL_FOREACH_SAFE( touchDelegates_, entry, tmp ) {
+			if ( entry->flags & kCCImplementsTouchesEnded) {
+				void *swallows = [entry->delegate performSelector:@selector(ccTouchesEndedWithEvent:) withObject:event];
+				if( swallows )
+					break;
+			}
+		}
+	}	
 }
 
 - (void)touchesCancelledWithEvent:(NSEvent *)event
 {
-	if (dispatchEvents_ ) {
-		NSLog(@"Touch Events: Not supported yet");
+	if( dispatchEvents_ ) {
+		tListEntry *entry, *tmp;
+		
+		DL_FOREACH_SAFE( touchDelegates_, entry, tmp ) {
+			if ( entry->flags & kCCImplementsTouchesCancelled) {
+				void *swallows = [entry->delegate performSelector:@selector(ccTouchesCancelledWithEvent:) withObject:event];
+				if( swallows )
+					break;
+			}
+		}
+	}	
+}
+
+
+#pragma mark CCEventDispatcher - queue events
+
+#if CC_DIRECTOR_MAC_USE_DISPLAY_LINK_THREAD
+-(void) queueEvent:(NSEvent*)event selector:(SEL)selector
+{
+	NSAssert( eventQueueCount < QUEUE_EVENT_MAX, @"CCEventDispatcher: recompile. Increment QUEUE_EVENT_MAX value");
+
+	@synchronized (self) {
+		eventQueue[eventQueueCount].selector = selector;
+		eventQueue[eventQueueCount].event = [event copy];
+		
+		eventQueueCount++;
 	}
 }
+
+-(void) dispatchQueuedEvents
+{
+	@synchronized (self) {
+		for( int i=0; i < eventQueueCount; i++ ) {
+			SEL sel = eventQueue[i].selector;
+			NSEvent *event = eventQueue[i].event;
+			
+			[self performSelector:sel withObject:event];
+			
+			[event release];
+		}
+		
+		eventQueueCount = 0;
+	}
+}
+#endif // CC_DIRECTOR_MAC_USE_DISPLAY_LINK_THREAD
+
+
 @end
 
 #endif // __MAC_OS_X_VERSION_MAX_ALLOWED

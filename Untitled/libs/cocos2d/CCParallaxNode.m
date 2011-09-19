@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2009-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,9 +34,9 @@
 	CGPoint offset_;
 	CCNode *child_;	// weak ref
 }
-@property (readwrite) CGPoint ratio;
-@property (readwrite) CGPoint offset;
-@property (readwrite,assign) CCNode *child;
+@property (nonatomic,readwrite) CGPoint ratio;
+@property (nonatomic,readwrite) CGPoint offset;
+@property (nonatomic,readwrite,assign) CCNode *child;
 +(id) pointWithCGPoint:(CGPoint)point offset:(CGPoint)offset;
 -(id) initWithCGPoint:(CGPoint)point offset:(CGPoint)offset;
 @end
@@ -60,7 +61,7 @@
 
 @implementation CCParallaxNode
 
-@synthesize parallaxArray=parallaxArray_;
+@synthesize parallaxArray = parallaxArray_;
 
 -(id) init
 {
@@ -80,13 +81,12 @@
 	[super dealloc];
 }
 
--(id) addChild:(CCNode*)child z:(int)z tag:(int)tag
+-(void) addChild:(CCNode*)child z:(NSInteger)z tag:(NSInteger)tag
 {
 	NSAssert(NO,@"ParallaxNode: use addChild:z:parallaxRatio:positionOffset instead");
-	return nil;
 }
 
--(id) addChild: (CCNode*) child z:(int)z parallaxRatio:(CGPoint)ratio positionOffset:(CGPoint)offset
+-(void) addChild: (CCNode*) child z:(NSInteger)z parallaxRatio:(CGPoint)ratio positionOffset:(CGPoint)offset
 {
 	NSAssert( child != nil, @"Argument must be non-nil");
 	CGPointObject *obj = [CGPointObject pointWithCGPoint:ratio offset:offset];
@@ -94,11 +94,11 @@
 	ccArrayAppendObjectWithResize(parallaxArray_, obj);
 	
 	CGPoint pos = self.position;
-	float x = pos.x * ratio.x + offset.x;
-	float y = pos.y * ratio.y + offset.y;
-	child.position = ccp(x,y);
+	pos.x = pos.x * ratio.x + offset.x;
+	pos.y = pos.y * ratio.y + offset.y;
+	child.position = pos;
 	
-	return [super addChild: child z:z tag:child.tag];
+	[super addChild: child z:z tag:child.tag];
 }
 
 -(void) removeChild:(CCNode*)node cleanup:(BOOL)cleanup

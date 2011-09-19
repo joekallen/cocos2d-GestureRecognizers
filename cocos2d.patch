@@ -1,7 +1,7 @@
 diff -rupN old/CCLayer.h new/CCLayer.h
---- old/CCLayer.h	2010-10-12 09:19:18.000000000 -0700
-+++ new/CCLayer.h	2010-10-12 09:19:02.000000000 -0700
-@@ -48,7 +48,6 @@
+--- old/CCLayer.h	2011-09-09 07:23:19.000000000 +0200
++++ new/CCLayer.h	2011-09-06 21:04:36.000000000 +0200
+@@ -49,7 +49,6 @@
  #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
  @interface CCLayer : CCNode <UIAccelerometerDelegate, CCStandardTouchDelegate, CCTargetedTouchDelegate>
  {
@@ -9,27 +9,35 @@ diff -rupN old/CCLayer.h new/CCLayer.h
  	BOOL isAccelerometerEnabled_;
  }
  /** If isTouchEnabled, this method is called onEnter. Override it to change the
-@@ -74,7 +73,7 @@
- 
-  @since v0.8.1
+@@ -67,15 +66,6 @@
   */
+ -(void) registerWithTouchDispatcher;
+ 
+-/** whether or not it will receive Touch events.
+- You can enable / disable touch events with this property.
+- Only the touches of this node will be affected. This "method" is not propagated to it's children.
+- 
+- Valid on iOS and Mac OS X v10.6 and later.
+-
+- @since v0.8.1
+- */
 -@property(nonatomic,assign) BOOL isTouchEnabled;
-+//@property(nonatomic,assign) BOOL isTouchEnabled; // in CCNode
  /** whether or not it will receive Accelerometer events
   You can enable / disable accelerometer events with this property.
   
 diff -rupN old/CCLayer.m new/CCLayer.m
---- old/CCLayer.m	2010-10-12 09:19:18.000000000 -0700
-+++ new/CCLayer.m	2010-10-12 09:19:02.000000000 -0700
-@@ -56,7 +56,6 @@
+--- old/CCLayer.m	2011-09-09 07:23:19.000000000 +0200
++++ new/CCLayer.m	2011-09-06 21:05:54.000000000 +0200
+@@ -56,8 +56,6 @@
+ 		[self setContentSize:s];
  		self.isRelativeAnchorPoint = NO;
  
- #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 -		isTouchEnabled_ = NO;
+-
+ #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
  		isAccelerometerEnabled_ = NO;
  #elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
- 		isMouseEnabled_ = NO;
-@@ -93,15 +92,11 @@
+@@ -95,15 +93,11 @@
  	}
  }
  
@@ -42,15 +50,15 @@ diff -rupN old/CCLayer.m new/CCLayer.m
  {
  	if( isTouchEnabled_ != enabled ) {
 -		isTouchEnabled_ = enabled;
-+    // CCNode needs to remove any gesture recognizers
-+    [super setIsTouchEnabled:enabled];
++        // CCNode needs to remove any gesture recognizers
++        [super setIsTouchEnabled:enabled];
  		if( isRunning_ ) {
  			if( enabled )
  				[self registerWithTouchDispatcher];
 diff -rupN old/CCNode.h new/CCNode.h
---- old/CCNode.h	2010-10-12 09:19:18.000000000 -0700
-+++ new/CCNode.h	2010-10-12 09:19:02.000000000 -0700
-@@ -33,6 +33,10 @@
+--- old/CCNode.h	2011-09-09 07:23:19.000000000 +0200
++++ new/CCNode.h	2011-09-06 21:08:52.000000000 +0200
+@@ -35,6 +35,10 @@
  #import "ccConfig.h"
  #import "Support/CCArray.h"
  
@@ -61,20 +69,20 @@ diff -rupN old/CCNode.h new/CCNode.h
  enum {
  	kCCNodeTagInvalid = -1,
  };
-@@ -161,6 +165,12 @@ enum {
+@@ -166,6 +170,12 @@ enum {
  #if	CC_NODE_TRANSFORM_USING_AFFINE_MATRIX
  	BOOL isTransformGLDirty_:1;
  #endif
-+
++    
 +#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
-+  CCArray* gestureRecognizers_;
-+  CGSize touchableArea_;
-+  BOOL isTouchEnabled_;
++    CCArray* gestureRecognizers_;
++    CGSize touchableArea_;
++    BOOL isTouchEnabled_;
 +#endif
  }
  
  /** The z order of the node relative to it's "brothers": children of the same parent */
-@@ -456,6 +466,28 @@ enum {
+@@ -475,6 +485,29 @@ enum {
   */
  -(void) pauseSchedulerAndActions;
  
@@ -85,7 +93,7 @@ diff -rupN old/CCNode.h new/CCNode.h
 +-(void) startAllGestureRecognizers;
 +
 +/*  used to see if a touch is in a nodes touchAble area, if the area isn't set
-+ the content size is used */
++    the content size is used */
 +-(BOOL) isPointInArea:(CGPoint)pt;
 +-(BOOL) isNodeInTreeTouched:(CGPoint)pt;
 +
@@ -94,19 +102,20 @@ diff -rupN old/CCNode.h new/CCNode.h
 +@property(nonatomic,readonly) CCArray *gestureRecognizers;
 +
 +/** whether or not it will receive Touch events.
-+ You can enable / disable touch events with this property.
-+ Only the touches of this node will be affected. This "method" is not propagated to it's children.
-+ @since v0.8.1
-+ */
++  You can enable / disable touch events with this property.
++  Only the touches of this node will be affected. This "method" is not propagated to it's children.
++  @since v0.8.1
++  */
 +@property(nonatomic,assign) BOOL isTouchEnabled;
 +#endif
++
  
  // transformation methods
  
 diff -rupN old/CCNode.m new/CCNode.m
---- old/CCNode.m	2010-10-12 09:19:18.000000000 -0700
-+++ new/CCNode.m	2010-10-12 09:19:02.000000000 -0700
-@@ -39,6 +39,7 @@
+--- old/CCNode.m	2011-09-09 07:23:19.000000000 +0200
++++ new/CCNode.m	2011-09-06 21:36:59.000000000 +0200
+@@ -41,6 +41,7 @@
  #import <Availability.h>
  #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
  #import "Platforms/iOS/CCDirectorIOS.h"
@@ -114,191 +123,190 @@ diff -rupN old/CCNode.m new/CCNode.m
  #endif
  
  
-@@ -69,6 +70,9 @@
- @synthesize vertexZ = vertexZ_;
- @synthesize isRunning=isRunning_;
+@@ -72,6 +73,10 @@
+ @synthesize isRunning = isRunning_;
+ @synthesize userData = userData_;
  
 +#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 +@synthesize gestureRecognizers = gestureRecognizers_;
 +#endif
++
  #pragma mark CCNode - Transform related properties
  
- @synthesize rotation=rotation_, scaleX=scaleX_, scaleY=scaleY_;
-@@ -264,6 +268,11 @@
+ @synthesize rotation = rotation_, scaleX = scaleX_, scaleY = scaleY_;
+@@ -298,6 +303,12 @@
  		
  		// userData is always inited as nil
- 		userData = nil;
+ 		userData_ = nil;
++        
 +#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
-+    // lazy allocation
-+    gestureRecognizers_ = nil;
-+    isTouchEnabled_ = NO;
++        // lazy allocation
++        gestureRecognizers_ = nil;
++        isTouchEnabled_ = NO;
 +#endif
- 	}
- 	
- 	return self;
-@@ -626,6 +635,11 @@
+ 
+ 		//initialize parent to nil
+ 		parent_ = nil;
+@@ -672,6 +683,11 @@
  
  -(void) onEnter
  {
 +#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
-+  if( isTouchEnabled_ )
-+    [self startAllGestureRecognizers];
++    if( isTouchEnabled_ )
++        [self startAllGestureRecognizers];
 +#endif
-+
++    
  	[children_ makeObjectsPerformSelector:@selector(onEnter)];	
  	[self resumeSchedulerAndActions];
  	
-@@ -639,6 +653,10 @@
+@@ -685,6 +701,9 @@
  
  -(void) onExit
  {
 +#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
-+  [self stopAllGestureRecognizers];
++    [self stopAllGestureRecognizers];
 +#endif
-+
  	[self pauseSchedulerAndActions];
  	isRunning_ = NO;	
  	
-@@ -739,6 +757,145 @@
+@@ -783,6 +802,143 @@
  	[[CCActionManager sharedManager] pauseTarget:self];
  }
  
-+
 +#pragma mark Gesture Recognition
++
 +#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 +-(BOOL) isRunning
 +{
-+  return isRunning_;
++    return isRunning_;
 +}
 +
 +-(void) setIsRunning:(BOOL)running
 +{
-+  if( isRunning_ != running )
-+  {
-+    isRunning_ = running;
-+    if( isRunning_ && isTouchEnabled_ )
-+      [self startAllGestureRecognizers];
-+    else
-+      [self stopAllGestureRecognizers];
-+  }
++    if( isRunning_ != running )
++    {
++        isRunning_ = running;
++        if( isRunning_ && isTouchEnabled_ )
++            [self startAllGestureRecognizers];
++        else
++            [self stopAllGestureRecognizers];
++    }
 +}
 +
 +- (void)addGestureRecognizer:(CCGestureRecognizer*)gestureRecognizer
 +{
-+  if( ! gestureRecognizers_ )
-+		gestureRecognizers_ = [[CCArray alloc] initWithCapacity:4];
-+  
-+  [gestureRecognizers_ addObject:gestureRecognizer];
-+  gestureRecognizer.node = self;
-+  
-+  // if we are running we add the recognizer to the view right now
-+  // if not we let the one enter take care of it since we don't
-+  // want recognizers going off when the node isn't active
-+  if( isRunning_ && isTouchEnabled_ )
-+    [[CCDirector sharedDirector].openGLView addGestureRecognizer:gestureRecognizer.gestureRecognizer];
++    if( ! gestureRecognizers_ )
++        gestureRecognizers_ = [[CCArray alloc] initWithCapacity:4];
++    [gestureRecognizers_ addObject:gestureRecognizer];
++    gestureRecognizer.node = self;
++      
++    // if we are running we add the recognizer to the view right now
++    // if not we let the one enter take care of it since we don't
++    // want recognizers going off when the node isn't active
++    if( isRunning_ && isTouchEnabled_ )
++        [[CCDirector sharedDirector].openGLView addGestureRecognizer:gestureRecognizer.gestureRecognizer];
 +}
 +
 +- (void)removeGestureRecognizer:(CCGestureRecognizer*)gestureRecognizer
 +{
-+  [gestureRecognizers_ removeObject:gestureRecognizer];
-+  // this is a sanity check to make sure that someone didn't add the
-+  // same gestureRecognizer to different nodes
-+  if( gestureRecognizer.node == self )
-+    [[CCDirector sharedDirector].openGLView removeGestureRecognizer:gestureRecognizer.gestureRecognizer];
++    [gestureRecognizers_ removeObject:gestureRecognizer];
++    // this is a sanity check to make sure that someone didn't add the
++    // same gestureRecognizer to different nodes
++    if( gestureRecognizer.node == self )
++        [[CCDirector sharedDirector].openGLView removeGestureRecognizer:gestureRecognizer.gestureRecognizer];
 +}
 +
 +- (void)stopAllGestureRecognizers
 +{
-+  CCGestureRecognizer* recognizer;
-+	CCARRAY_FOREACH(gestureRecognizers_, recognizer)
-+  {
-+    if( recognizer.node == self )
-+      [[CCDirector sharedDirector].openGLView removeGestureRecognizer:recognizer.gestureRecognizer];
-+  }
++    CCGestureRecognizer* recognizer;
++    CCARRAY_FOREACH(gestureRecognizers_, recognizer)
++    {
++        if( recognizer.node == self )
++            [[CCDirector sharedDirector].openGLView removeGestureRecognizer:recognizer.gestureRecognizer];
++    }
 +}
 +
 +-(void) startAllGestureRecognizers
 +{
-+  CCGestureRecognizer* recognizer;
-+	CCARRAY_FOREACH(gestureRecognizers_, recognizer)
-+  {
-+    if( recognizer.node == self )
-+      [[CCDirector sharedDirector].openGLView addGestureRecognizer:recognizer.gestureRecognizer];
-+  }
++    CCGestureRecognizer* recognizer;
++    CCARRAY_FOREACH(gestureRecognizers_, recognizer)
++    {
++        if( recognizer.node == self )
++            [[CCDirector sharedDirector].openGLView addGestureRecognizer:recognizer.gestureRecognizer];
++    }
 +}
 +
 +-(BOOL) isPointInArea:(CGPoint)pt
 +{
-+  if( visible_ == NO )
++    if( visible_ == NO )
++        return NO;
++
++    /*  convert the point to the nodes local coordinate system to make it
++        easier to compare against the area the node occupies*/
++    pt = [self convertToNodeSpace:pt];
++      
++    // we have to take the anchor point into account for checking
++    CGRect rect;
++    /*  we should be able to use touchableArea here, even if a node doesn't set
++        this, it will return the contentArea.  */
++    rect.size = self.touchableArea;
++    rect.origin = CGPointZero;;
++      
++    if( CGRectContainsPoint(rect,pt) )
++        return YES;
 +    return NO;
-+  
-+  /*  convert the point to the nodes local coordinate system to make it
-+   easier to compare against the area the node occupies*/
-+  pt = [self convertToNodeSpace:pt];
-+  
-+  // we have to take the anchor point into account for checking
-+  CGRect rect;
-+  /*  we should be able to use touchableArea here, even if a node doesn't set
-+   this, it will return the contentArea.  */
-+  rect.size = self.touchableArea;
-+  rect.origin = CGPointZero;;
-+  
-+  if( CGRectContainsPoint(rect,pt) )
-+    return YES;
-+  return NO;
 +}
 +
 +-(BOOL) isNodeInTreeTouched:(CGPoint)pt
 +{
-+  if( [self isPointInArea:pt] )
-+    return YES;
-+  
-+  BOOL rslt = NO;
-+  CCNode* child;
-+  CCARRAY_FOREACH(children_, child )
-+  {
-+    if( [child isNodeInTreeTouched:pt] )
++    if( [self isPointInArea:pt] )
++        return YES;
++
++    BOOL rslt = NO;
++    CCNode* child;
++    CCARRAY_FOREACH(children_, child )
 +    {
-+      rslt = YES;
-+      break;
++        if( [child isNodeInTreeTouched:pt] )
++        {
++            rslt = YES;
++            break;
++        }
 +    }
-+  }
-+  return rslt;
++    return rslt;
 +}
 +
 +-(CGSize) touchableArea
 +{
-+  // we use content size if touchable area is 0
-+  if( touchableArea_.width != 0.0f ||
-+      touchableArea_.height != 0.0f )
-+    return touchableArea_;
-+  else
-+    return contentSize_;
++    // we use content size if touchable area is 0
++    if( touchableArea_.width != 0.0f || touchableArea_.height != 0.0f )
++        return touchableArea_;
++    else
++        return contentSize_;
 +}
 +
 +-(void) setTouchableArea:(CGSize)area
 +{
-+	touchableArea_ = area;
++    touchableArea_ = area;
 +}
 +
 +-(BOOL) isTouchEnabled
 +{
-+	return isTouchEnabled_;
++    return isTouchEnabled_;
 +}
 +
 +-(void) setIsTouchEnabled:(BOOL)enabled
 +{
-+  if( isTouchEnabled_ != enabled )
-+  {
-+    isTouchEnabled_ = enabled;
-+    CCGestureRecognizer* recognizer;
-+    CCARRAY_FOREACH(gestureRecognizers_, recognizer)
++    if( isTouchEnabled_ != enabled )
 +    {
-+      // just an extra check
-+      if( recognizer.node == self )
-+        recognizer.gestureRecognizer.enabled = isTouchEnabled_;
++        isTouchEnabled_ = enabled;
++        CCGestureRecognizer* recognizer;
++        CCARRAY_FOREACH(gestureRecognizers_, recognizer)
++        {
++        // just an extra check
++            if( recognizer.node == self )
++                recognizer.gestureRecognizer.enabled = isTouchEnabled_;
++        }
 +    }
-+  }
 +}
 +#endif
 +
@@ -306,8 +314,8 @@ diff -rupN old/CCNode.m new/CCNode.m
  
  - (CGAffineTransform)nodeToParentTransform
 diff -rupN old/Platforms/iOS/CCGestureRecognizer.h new/Platforms/iOS/CCGestureRecognizer.h
---- old/Platforms/iOS/CCGestureRecognizer.h	1969-12-31 17:00:00.000000000 -0700
-+++ new/Platforms/iOS/CCGestureRecognizer.h	2010-10-12 09:19:02.000000000 -0700
+--- old/Platforms/iOS/CCGestureRecognizer.h	1970-01-01 01:00:00.000000000 +0100
++++ new/Platforms/iOS/CCGestureRecognizer.h	2011-09-06 21:25:22.000000000 +0200
 @@ -0,0 +1,46 @@
 +//
 +//  CCGestureRecognizer.h
@@ -328,14 +336,14 @@ diff -rupN old/Platforms/iOS/CCGestureRecognizer.h new/Platforms/iOS/CCGestureRe
 +
 +@interface CCGestureRecognizer : NSObject <UIGestureRecognizerDelegate,NSCoding>
 +{
-+  UIGestureRecognizer* gestureRecognizer_;
-+  CCNode* node_;
-+  
-+  id<UIGestureRecognizerDelegate> delegate_;
-+  
-+  id target_;
-+  SEL callback_;
-+}
++      UIGestureRecognizer* gestureRecognizer_;
++      CCNode* node_;
++      
++      id<UIGestureRecognizerDelegate> delegate_;
++      
++      id target_;
++      SEL callback_;
++    }
 +
 +@property(nonatomic,readonly) UIGestureRecognizer* gestureRecognizer;
 +@property(nonatomic,assign) CCNode* node;
@@ -355,9 +363,10 @@ diff -rupN old/Platforms/iOS/CCGestureRecognizer.h new/Platforms/iOS/CCGestureRe
 +@end
 +
 +#endif  // end of __CCGestureRecognizer_H__
+\ No newline at end of file
 diff -rupN old/Platforms/iOS/CCGestureRecognizer.m new/Platforms/iOS/CCGestureRecognizer.m
---- old/Platforms/iOS/CCGestureRecognizer.m	1969-12-31 17:00:00.000000000 -0700
-+++ new/Platforms/iOS/CCGestureRecognizer.m	2010-10-12 09:19:02.000000000 -0700
+--- old/Platforms/iOS/CCGestureRecognizer.m	1970-01-01 01:00:00.000000000 +0100
++++ new/Platforms/iOS/CCGestureRecognizer.m	2011-09-07 15:48:20.000000000 +0200
 @@ -0,0 +1,328 @@
 +//
 +//  CCGestureRecognizer.m
@@ -376,206 +385,206 @@ diff -rupN old/Platforms/iOS/CCGestureRecognizer.m new/Platforms/iOS/CCGestureRe
 +
 +-(void)dealloc
 +{
-+  CCLOGINFO( @"cocos2d: deallocing %@", self); 
-+  [gestureRecognizer_ release];
-+  [super dealloc];
-+}
++      CCLOGINFO( @"cocos2d: deallocing %@", self); 
++      [gestureRecognizer_ release];
++      [super dealloc];
++    }
 +
 +- (UIGestureRecognizer*)gestureRecognizer
 +{
-+  return gestureRecognizer_;
-+}
++      return gestureRecognizer_;
++    }
 +
 +- (CCNode*)node
 +{
-+  return node_;
-+}
++      return node_;
++    }
 +
 +- (void)setNode:(CCNode*)node
 +{
-+  node_ = node;
-+}
++      node_ = node;
++    }
 +
 +- (id<UIGestureRecognizerDelegate>)delegate
 +{
-+  return delegate_;
-+}
++      return delegate_;
++    }
 +
 +- (void) setDelegate:(id<UIGestureRecognizerDelegate>)delegate
 +{
-+  delegate_ = delegate;
-+}
++      delegate_ = delegate;
++    }
 +
 +- (id)target
 +{
-+  return target_;
-+}
++      return target_;
++    }
 +
 +- (void)setTarget:(id)target
 +{
-+  target_ = target;
-+}
++      target_ = target;
++    }
 +
 +- (SEL)callback
 +{
-+  return callback_;
-+}
++      return callback_;
++    }
 +
 +- (void)setCallback:(SEL)callback
 +{
-+  callback_ = callback;
-+}
++      callback_ = callback;
++    }
 +
 +- (id)initWithRecognizerTargetAction:(UIGestureRecognizer*)gestureRecognizer target:(id)target action:(SEL)action
 +{
-+  if( (self=[super init]) )
-+  {
-+    assert(gestureRecognizer != NULL && "gesture recognizer must not be null");
-+    gestureRecognizer_ = gestureRecognizer;
-+    [gestureRecognizer_ retain];
-+    [gestureRecognizer_ addTarget:self action:@selector(callback:)];
-+    
-+    // setup our new delegate
-+    delegate_ = gestureRecognizer_.delegate;
-+    gestureRecognizer_.delegate = self;
-+    
-+    target_ = target; // weak ref
-+    callback_ = action;
-+  }
-+  return self;
-+}
++      if( (self=[super init]) )
++          {
++                assert(gestureRecognizer != NULL && "gesture recognizer must not be null");
++                gestureRecognizer_ = gestureRecognizer;
++                [gestureRecognizer_ retain];
++                [gestureRecognizer_ addTarget:self action:@selector(callback:)];
++                
++                // setup our new delegate
++                delegate_ = gestureRecognizer_.delegate;
++                gestureRecognizer_.delegate = self;
++                
++                target_ = target; // weak ref
++                callback_ = action;
++              }
++      return self;
++    }
 +
 ++ (id)CCRecognizerWithRecognizerTargetAction:(UIGestureRecognizer*)gestureRecognizer target:(id)target action:(SEL)action
 +{
-+  return [[[self alloc] initWithRecognizerTargetAction:gestureRecognizer target:target action:action] autorelease];
-+}
++      return [[[self alloc] initWithRecognizerTargetAction:gestureRecognizer target:target action:action] autorelease];
++    }
 +
 +- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
 +{
-+  assert( node_ != NULL && "gesture recognizer must have a node" );
-+    
-+  CGPoint pt = [[CCDirector sharedDirector] convertToGL:[touch locationInView: [touch view]]];
-+  /* do a rotation opposite of the node to see if the point is in it
-+     it should make it easier to check against an aligned object */
-+  
-+  BOOL rslt = [node_ isPointInArea:pt];
-+  // TODO: we might want to think about adding this first check back in.
-+ 
-+  // leaving this out lets a node and its children share a touch if the
-+  // touch are overlaps. two nodes overlapping on a scene though would
-+  // not both get the touch.
-+  
-+  
-+  if( rslt )
-+  {
-+    /*  ok we know this node was touched, but now we need to make sure
-+        no other node above this one was touched -- this check only includes
-+        nodes that receive touches */
-+    
-+    // first is to check children
-+    CCNode* n;
-+    /*CCARRAY_FOREACH(node_.children, node)
-+    {
-+      if( [node isNodeInTreeTouched:pt] )
-+      {
-+        rslt = NO;
-+        break;
-+      }
-+    }*/
-+    
-+    // ok, still ok, now check children of parents after this node
-+    n = node_;
-+    CCNode* parent = node_.parent;
-+    while( n != nil && rslt)
-+    {
-+      CCNode* child;
-+      BOOL nodeFound = NO;
-+      CCARRAY_FOREACH(parent.children, child)
-+      {
-+        if( !nodeFound )
-+        {
-+          if( !nodeFound && n == child )
-+            nodeFound = YES;  // we need to keep track of until we hit our node, any past it have a higher z value
-+          continue;
-+        }
++      assert( node_ != NULL && "gesture recognizer must have a node" );
 +        
-+        if( [child isNodeInTreeTouched:pt] )
-+        {
-+          rslt = NO;
-+          break;
-+        }
-+      }
++      CGPoint pt = [[CCDirector sharedDirector] convertToGL:[touch locationInView: [touch view]]];
++      /* do a rotation opposite of the node to see if the point is in it
++             it should make it easier to check against an aligned object */
 +      
-+      n = parent;
-+      parent = n.parent;
-+    }    
-+  }
-+  
-+  if( rslt && delegate_ && [delegate_ respondsToSelector:@selector(gestureRecognizer:shouldReceiveTouch:)] )
-+    rslt = [delegate_ gestureRecognizer:gestureRecognizer shouldReceiveTouch:touch];
-+  
-+  return rslt;
-+}
++      BOOL rslt = [node_ isPointInArea:pt];
++      // TODO: we might want to think about adding this first check back in.
++     
++      // leaving this out lets a node and its children share a touch if the
++      // touch are overlaps. two nodes overlapping on a scene though would
++      // not both get the touch.
++      
++      
++      if( rslt )
++          {
++                /*  ok we know this node was touched, but now we need to make sure
++                          no other node above this one was touched -- this check only includes
++                          nodes that receive touches */
++                
++                // first is to check children
++                CCNode* n;
++                /*CCARRAY_FOREACH(node_.children, node)
++                      {
++                        if( [node isNodeInTreeTouched:pt] )
++                        {
++                          rslt = NO;
++                          break;
++                        }
++                      }*/
++                
++                // ok, still ok, now check children of parents after this node
++                n = node_;
++                CCNode* parent = node_.parent;
++                while( n != nil && rslt)
++                    {
++                          CCNode* child;
++                          BOOL nodeFound = NO;
++                          CCARRAY_FOREACH(parent.children, child)
++                          {
++                                if( !nodeFound )
++                                {
++                                    if( !nodeFound && n == child )
++                                        nodeFound = YES;  // we need to keep track of until we hit our node, any past it have a higher z value
++                                    continue;
++                                }
++                                
++                                if( [child isNodeInTreeTouched:pt] )
++                                {
++                                    rslt = NO;
++                                    break;
++                                }
++                              }
++                          
++                          n = parent;
++                          parent = n.parent;
++                        }    
++              }
++      
++      if( rslt && delegate_ && [delegate_ respondsToSelector:@selector(gestureRecognizer:shouldReceiveTouch:)] )
++            rslt = [delegate_ gestureRecognizer:gestureRecognizer shouldReceiveTouch:touch];
++      
++      return rslt;
++    }
 +
 +- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer
 +{
-+  if( delegate_ && [delegate_ respondsToSelector:@selector(gestureRecognizer:shouldRecognizeSimultaneouslyWithGestureRecognizer:)] )
-+    return [delegate_ gestureRecognizer:gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:otherGestureRecognizer];
-+  return YES;
-+}
++      if( delegate_ && [delegate_ respondsToSelector:@selector(gestureRecognizer:shouldRecognizeSimultaneouslyWithGestureRecognizer:)] )
++            return [delegate_ gestureRecognizer:gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:otherGestureRecognizer];
++      return YES;
++    }
 +
 +- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
 +{
-+  if( delegate_ && [delegate_ respondsToSelector:@selector(gestureRecognizerShouldBegin:)] )
-+    return [delegate_ gestureRecognizerShouldBegin:gestureRecognizer];
-+  return YES;
-+}
++      if( delegate_ && [delegate_ respondsToSelector:@selector(gestureRecognizerShouldBegin:)] )
++            return [delegate_ gestureRecognizerShouldBegin:gestureRecognizer];
++      return YES;
++    }
 +
 +- (void)callback:(UIGestureRecognizer*)recognizer
 +{
-+  if( target_ )
-+    [target_ performSelector:callback_ withObject:recognizer withObject:node_];
-+}
++      if( target_ )
++            [target_ performSelector:callback_ withObject:recognizer withObject:node_];
++    }
 +
 +- (void)encodeWithCoder:(NSCoder *)coder 
 +{
-+  [coder encodeObject:gestureRecognizer_ forKey:@"gestureRecognizer"];
-+  [coder encodeObject:node_ forKey:@"node"];
-+  [coder encodeObject:delegate_ forKey:@"delegate"];
-+  [coder encodeObject:target_ forKey:@"target"];
-+  // TODO: callback_
-+  [coder encodeBytes:(uint8_t*)&callback_ length:sizeof(callback_) forKey:@"callback"];
-+}
++      [coder encodeObject:gestureRecognizer_ forKey:@"gestureRecognizer"];
++      [coder encodeObject:node_ forKey:@"node"];
++      [coder encodeObject:delegate_ forKey:@"delegate"];
++      [coder encodeObject:target_ forKey:@"target"];
++      // TODO: callback_
++      [coder encodeBytes:(uint8_t*)&callback_ length:sizeof(callback_) forKey:@"callback"];
++    }
 +
 +- (id)initWithCoder:(NSCoder *)decoder 
 +{
-+  self=[self init];
-+  if (self) 
-+  {
-+    // don't retain node, it will retain this
-+    node_     = [decoder decodeObjectForKey:@"node"];          // weak ref
-+    delegate_ = [decoder decodeObjectForKey:@"delegate"];  // weak ref
-+    target_   = [decoder decodeObjectForKey:@"target"];      // weak ref
-+    // TODO: callback_
-+    NSUInteger len;
-+    const uint8_t * buffer = [decoder decodeBytesForKey:@"callback" returnedLength:&len];
-+    // sanity check to make sure our length is correct
-+    if( len == sizeof(callback_) )
-+      memcpy(&callback_, buffer, len);
-+   
-+    gestureRecognizer_ = [decoder decodeObjectForKey:@"gestureRecognizer"];
-+    [gestureRecognizer_ addTarget:self action:@selector(callback:)];
-+    
-+    gestureRecognizer_.delegate = self;
-+    [gestureRecognizer_ retain];
-+  }
-+  return self;
-+}
++      self=[self init];
++      if (self) 
++          {
++                // don't retain node, it will retain this
++                node_     = [decoder decodeObjectForKey:@"node"];          // weak ref
++                delegate_ = [decoder decodeObjectForKey:@"delegate"];  // weak ref
++                target_   = [decoder decodeObjectForKey:@"target"];      // weak ref
++                // TODO: callback_
++                NSUInteger len;
++                const uint8_t * buffer = [decoder decodeBytesForKey:@"callback" returnedLength:&len];
++                // sanity check to make sure our length is correct
++                if( len == sizeof(callback_) )
++                      memcpy(&callback_, buffer, len);
++               
++                gestureRecognizer_ = [decoder decodeObjectForKey:@"gestureRecognizer"];
++                [gestureRecognizer_ addTarget:self action:@selector(callback:)];
++                
++                gestureRecognizer_.delegate = self;
++                [gestureRecognizer_ retain];
++              }
++      return self;
++    }
 +
 +- (NSString*) description
 +{
-+	return [NSString stringWithFormat:@"<%@ = %08X | %@ | Node = %@ >", [self class], self, [gestureRecognizer_ class], node_];
-+}
++    	return [NSString stringWithFormat:@"<%@ = %08X | %@ | Node = %@ >", [self class], self, [gestureRecognizer_ class], node_];
++    }
 +
 +@end
 +#pragma mark NSCoding of built in recognizers
@@ -586,111 +595,112 @@ diff -rupN old/Platforms/iOS/CCGestureRecognizer.m new/Platforms/iOS/CCGestureRe
 +
 +- (id)initWithCoder:(NSCoder *)decoder 
 +{
-+  self=[self init];
-+  if (self) 
-+  {}
-+  return self;
-+}
++      self=[self init];
++      if (self) 
++          {}
++      return self;
++    }
 +@end
 +
 +@implementation UITapGestureRecognizer(NSCoder)
 +- (void)encodeWithCoder:(NSCoder *)coder 
 +{
-+  [coder encodeInt:self.numberOfTapsRequired forKey:@"numberofTapsRequired"];
-+  [coder encodeInt:self.numberOfTouchesRequired forKey:@"numberOfTouchesRequired"];
-+}
++      [coder encodeInt:self.numberOfTapsRequired forKey:@"numberofTapsRequired"];
++      [coder encodeInt:self.numberOfTouchesRequired forKey:@"numberOfTouchesRequired"];
++    }
 +
 +- (id)initWithCoder:(NSCoder *)decoder 
 +{
-+  self=[self init];
-+  if (self) 
-+  {
-+    self.numberOfTapsRequired = [decoder decodeIntForKey:@"numberOfTapsRequired"];
-+    self.numberOfTouchesRequired = [decoder decodeIntForKey:@"numberOfTouchesRequired"];
-+  }
-+  return self;
-+}
++      self=[self init];
++      if (self) 
++          {
++                self.numberOfTapsRequired = [decoder decodeIntForKey:@"numberOfTapsRequired"];
++                self.numberOfTouchesRequired = [decoder decodeIntForKey:@"numberOfTouchesRequired"];
++              }
++      return self;
++    }
 +@end
 +
 +@implementation UIPanGestureRecognizer(NSCoder)
 +- (void)encodeWithCoder:(NSCoder *)coder 
 +{
-+  [coder encodeInt:self.minimumNumberOfTouches forKey:@"minimumNumberOfTouches"];
-+  [coder encodeInt:self.maximumNumberOfTouches forKey:@"maximumNumberOfTouches"];
-+}
++      [coder encodeInt:self.minimumNumberOfTouches forKey:@"minimumNumberOfTouches"];
++      [coder encodeInt:self.maximumNumberOfTouches forKey:@"maximumNumberOfTouches"];
++    }
 +
 +- (id)initWithCoder:(NSCoder *)decoder 
 +{
-+  self=[self init];
-+  if (self) 
-+  {
-+    self.minimumNumberOfTouches = [decoder decodeIntForKey:@"minimumNumberOfTouches"];
-+    self.maximumNumberOfTouches = [decoder decodeIntForKey:@"maximumNumberOfTouches"];
-+  }
-+  return self;
-+}
++      self=[self init];
++      if (self) 
++          {
++                self.minimumNumberOfTouches = [decoder decodeIntForKey:@"minimumNumberOfTouches"];
++                self.maximumNumberOfTouches = [decoder decodeIntForKey:@"maximumNumberOfTouches"];
++              }
++      return self;
++    }
 +@end
 +
 +@implementation UILongPressGestureRecognizer(NSCoder)
 +- (void)encodeWithCoder:(NSCoder *)coder 
 +{
-+  [coder encodeInt:self.numberOfTapsRequired forKey:@"numberOfTapsRequired"];
-+  [coder encodeInt:self.numberOfTouchesRequired forKey:@"numberOfTouchesRequired"];
-+  [coder encodeDouble:self.minimumPressDuration forKey:@"minimumPressDuration"];
-+  [coder encodeFloat:self.allowableMovement forKey:@"allowableMovement"];
-+}
++      [coder encodeInt:self.numberOfTapsRequired forKey:@"numberOfTapsRequired"];
++      [coder encodeInt:self.numberOfTouchesRequired forKey:@"numberOfTouchesRequired"];
++      [coder encodeDouble:self.minimumPressDuration forKey:@"minimumPressDuration"];
++      [coder encodeFloat:self.allowableMovement forKey:@"allowableMovement"];
++    }
 +
 +- (id)initWithCoder:(NSCoder *)decoder 
 +{
-+  self=[self init];
-+  if (self) 
-+  {
-+    self.numberOfTapsRequired = [decoder decodeIntForKey:@"numberOfTapsRequired"];
-+    self.numberOfTouchesRequired = [decoder decodeIntForKey:@"numberOfTouchesRequired"];
-+    self.minimumPressDuration = [decoder decodeDoubleForKey:@"minimumPressDuration"];
-+    self.allowableMovement = [decoder decodeFloatForKey:@"allowableMovement"];
-+  }
-+  return self;
-+}
++      self=[self init];
++      if (self) 
++          {
++                self.numberOfTapsRequired = [decoder decodeIntForKey:@"numberOfTapsRequired"];
++                self.numberOfTouchesRequired = [decoder decodeIntForKey:@"numberOfTouchesRequired"];
++                self.minimumPressDuration = [decoder decodeDoubleForKey:@"minimumPressDuration"];
++                self.allowableMovement = [decoder decodeFloatForKey:@"allowableMovement"];
++              }
++      return self;
++    }
 +@end
 +
 +@implementation UISwipeGestureRecognizer(NSCoder)
 +- (void)encodeWithCoder:(NSCoder *)coder 
 +{
-+  [coder encodeInt:self.numberOfTouchesRequired forKey:@"numberOfTouchesRequired"];
-+  [coder encodeInt:self.direction forKey:@"direction"];
-+}
++      [coder encodeInt:self.numberOfTouchesRequired forKey:@"numberOfTouchesRequired"];
++      [coder encodeInt:self.direction forKey:@"direction"];
++    }
 +
 +- (id)initWithCoder:(NSCoder *)decoder 
 +{
-+  self=[self init];
-+  if (self) 
-+  {
-+    self.numberOfTouchesRequired = [decoder decodeIntForKey:@"numberOfTouchesRequired"];
-+    self.direction = (UISwipeGestureRecognizerDirection)[decoder decodeIntForKey:@"direction"];
-+  }
-+  return self;
-+}
++      self=[self init];
++      if (self) 
++          {
++                self.numberOfTouchesRequired = [decoder decodeIntForKey:@"numberOfTouchesRequired"];
++                self.direction = (UISwipeGestureRecognizerDirection)[decoder decodeIntForKey:@"direction"];
++              }
++      return self;
++    }
 +@end
 +
 +@implementation UIPinchGestureRecognizer(NSCoder)
 +- (void)encodeWithCoder:(NSCoder *)coder 
 +{
-+}
++    }
 +
 +- (id)initWithCoder:(NSCoder *)decoder 
 +{
-+  self=[self init];
-+  if (self) 
-+  {
-+  }
-+  return self;
-+}
++      self=[self init];
++      if (self) 
++          {
++              }
++      return self;
++    }
 +@end
+\ No newline at end of file
 diff -rupN old/cocos2d.h new/cocos2d.h
---- old/cocos2d.h	2010-10-12 09:19:18.000000000 -0700
-+++ new/cocos2d.h	2010-10-12 09:19:02.000000000 -0700
-@@ -128,6 +128,7 @@
+--- old/cocos2d.h	2011-09-09 07:23:21.000000000 +0200
++++ new/cocos2d.h	2011-09-06 21:31:53.000000000 +0200
+@@ -130,6 +130,7 @@
  #import "Platforms/iOS/CCTouchHandler.h"
  #import "Platforms/iOS/EAGLView.h"
  #import "Platforms/iOS/CCDirectorIOS.h"

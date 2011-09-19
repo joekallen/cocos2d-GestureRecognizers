@@ -55,7 +55,6 @@
  */
 @interface CCGrid3DAction : CCGridAction
 {
-	
 }
 
 /** returns the vertex than belongs to certain position in the grid */
@@ -72,7 +71,6 @@
 /** Base class for CCTiledGrid3D actions */
 @interface CCTiledGrid3DAction : CCGridAction
 {
-	
 }
 
 /** returns the tile that belongs to a certain position of the grid */
@@ -89,8 +87,8 @@
 /** CCAccelDeccelAmplitude action */
 @interface CCAccelDeccelAmplitude : CCActionInterval
 {
-	float			rate;
-	CCActionInterval *other;
+	float			rate_;
+	CCActionInterval *other_;
 }
 
 /** amplitude rate */
@@ -108,8 +106,8 @@
 /** CCAccelAmplitude action */
 @interface CCAccelAmplitude : CCActionInterval
 {
-	float			rate;
-	CCActionInterval *other;
+	float			rate_;
+	CCActionInterval *other_;
 }
 
 /** amplitude rate */
@@ -127,8 +125,8 @@
 /** CCDeccelAmplitude action */
 @interface CCDeccelAmplitude : CCActionInterval
 {
-	float			rate;
-	CCActionInterval *other;
+	float			rate_;
+	CCActionInterval *other_;
 }
 
 /** amplitude rate */
@@ -158,7 +156,7 @@
 /** CCReuseGrid action */
 @interface CCReuseGrid : CCActionInstant
 {
-	int t;
+	int t_;
 }
 /** creates an action with the number of times that the current grid will be reused */
 +(id) actionWithTimes: (int) times;

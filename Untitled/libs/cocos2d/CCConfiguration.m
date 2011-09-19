@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,18 +34,17 @@
 #import "CCConfiguration.h"
 #import "ccMacros.h"
 #import "ccConfig.h"
-
+#import "Support/OpenGL_Internal.h"
 
 @implementation CCConfiguration
 
-@synthesize loadingBundle=loadingBundle_;
-@synthesize maxTextureSize=maxTextureSize_;
-@synthesize supportsPVRTC=supportsPVRTC_;
-@synthesize maxModelviewStackDepth=maxModelviewStackDepth_;
-@synthesize supportsNPOT=supportsNPOT_;
-@synthesize supportsBGRA8888=supportsBGRA8888_;
-@synthesize supportsDiscardFramebuffer=supportsDiscardFramebuffer_;
-@synthesize OSVersion=OSVersion_;
+@synthesize maxTextureSize = maxTextureSize_;
+@synthesize supportsPVRTC = supportsPVRTC_;
+@synthesize maxModelviewStackDepth = maxModelviewStackDepth_;
+@synthesize supportsNPOT = supportsNPOT_;
+@synthesize supportsBGRA8888 = supportsBGRA8888_;
+@synthesize supportsDiscardFramebuffer = supportsDiscardFramebuffer_;
+@synthesize OSVersion = OSVersion_;
 
 //
 // singleton stuff
@@ -85,8 +85,6 @@ static char * glExtensions;
 {
 	if( (self=[super init])) {
 		
-		loadingBundle_ = [NSBundle mainBundle];
-		
 		// Obtain iOS version
 		OSVersion_ = 0;
 #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
@@ -111,6 +109,14 @@ static char * glExtensions;
 		
 		glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize_);
 		glGetIntegerv(GL_MAX_MODELVIEW_STACK_DEPTH, &maxModelviewStackDepth_);
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+		if( OSVersion_ >= kCCiOSVersion_4_0 )
+			glGetIntegerv(GL_MAX_SAMPLES_APPLE, &maxSamplesAllowed_);
+		else
+			maxSamplesAllowed_ = 0;
+#elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
+		glGetIntegerv(GL_MAX_SAMPLES, &maxSamplesAllowed_);
+#endif
 		
 		supportsPVRTC_ = [self checkForGLExtension:@"GL_IMG_texture_compression_pvrtc"];
 #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
@@ -118,11 +124,22 @@ static char * glExtensions;
 #elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
 		supportsNPOT_ = [self checkForGLExtension:@"GL_ARB_texture_non_power_of_two"];
 #endif
-		supportsBGRA8888_ = [self checkForGLExtension:@"GL_IMG_texture_format_BGRA8888"];
+		// It seems that somewhere between firmware iOS 3.0 and 4.2 Apple renamed
+		// GL_IMG_... to GL_APPLE.... So we should check both names
+		
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+		BOOL bgra8a = [self checkForGLExtension:@"GL_IMG_texture_format_BGRA8888"];
+		BOOL bgra8b = [self checkForGLExtension:@"GL_APPLE_texture_format_BGRA8888"];
+		supportsBGRA8888_ = bgra8a | bgra8b;
+#elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
+		supportsBGRA8888_ = [self checkForGLExtension:@"GL_EXT_bgra"];
+#endif
+		
 		supportsDiscardFramebuffer_ = [self checkForGLExtension:@"GL_EXT_discard_framebuffer"];
 
 		CCLOG(@"cocos2d: GL_MAX_TEXTURE_SIZE: %d", maxTextureSize_);
 		CCLOG(@"cocos2d: GL_MAX_MODELVIEW_STACK_DEPTH: %d",maxModelviewStackDepth_);
+		CCLOG(@"cocos2d: GL_MAX_SAMPLES: %d", maxSamplesAllowed_);
 		CCLOG(@"cocos2d: GL supports PVRTC: %s", (supportsPVRTC_ ? "YES" : "NO") );
 		CCLOG(@"cocos2d: GL supports BGRA8888 textures: %s", (supportsBGRA8888_ ? "YES" : "NO") );
 		CCLOG(@"cocos2d: GL supports NPOT textures: %s", (supportsNPOT_ ? "YES" : "NO") );
@@ -158,6 +175,8 @@ static char * glExtensions;
 			  "NO"
 #endif
 			  );
+		
+		CHECK_GL_ERROR();
 	}
 	
 	return self;
