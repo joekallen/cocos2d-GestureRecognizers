@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2009-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,9 +37,9 @@
 #import "CCTMXXMLParser.h"
 #import "CCTMXTiledMap.h"
 #import "CCTMXObjectGroup.h"
-#import "Support/CCFileUtils.h"
 #import "Support/base64.h"
 #import "Support/ZipUtils.h"
+#import "Support/CCFileUtils.h"
 
 #pragma mark -
 #pragma mark TMXLayerInfo
@@ -46,8 +47,8 @@
 
 @implementation CCTMXLayerInfo
 
-@synthesize name=name_, layerSize=layerSize_, tiles=tiles_, visible=visible_,opacity=opacity_, ownTiles=ownTiles_, minGID=minGID_, maxGID=maxGID_, properties=properties_;
-@synthesize offset=offset_;
+@synthesize name = name_, layerSize = layerSize_, tiles = tiles_, visible = visible_, opacity = opacity_, ownTiles = ownTiles_, minGID = minGID_, maxGID = maxGID_, properties = properties_;
+@synthesize offset = offset_;
 -(id) init
 {
 	if( (self=[super init])) {
@@ -81,7 +82,7 @@
 #pragma mark TMXTilesetInfo
 @implementation CCTMXTilesetInfo
 
-@synthesize name=name_, firstGid=firstGid_, tileSize=tileSize_, spacing=spacing_, margin=margin_, sourceImage=sourceImage_, imageSize=imageSize_;
+@synthesize name = name_, firstGid = firstGid_, tileSize = tileSize_, spacing = spacing_, margin = margin_, sourceImage = sourceImage_, imageSize = imageSize_;
 
 - (void) dealloc
 {
@@ -119,7 +120,7 @@
 
 @implementation CCTMXMapInfo
 
-@synthesize orientation=orientation_, mapSize=mapSize_, layers=layers_, tilesets=tilesets_, tileSize=tileSize_, filename=filename_, objectGroups=objectGroups_, properties=properties_;
+@synthesize orientation = orientation_, mapSize = mapSize_, layers = layers_, tilesets = tilesets_, tileSize = tileSize_, filename = filename_, objectGroups = objectGroups_, properties = properties_;
 @synthesize tileProperties = tileProperties_;
 
 +(id) formatWithTMXFile:(NSString*)tmxFile
@@ -133,7 +134,7 @@
 		
 		self.tilesets = [NSMutableArray arrayWithCapacity:4];
 		self.layers = [NSMutableArray arrayWithCapacity:4];
-		self.filename = [CCFileUtils fullPathFromRelativePath:tmxFile];
+		self.filename = tmxFile;
 		self.objectGroups = [NSMutableArray arrayWithCapacity:4];
 		self.properties = [NSMutableDictionary dictionaryWithCapacity:5];
 		self.tileProperties = [NSMutableDictionary dictionaryWithCapacity:5];
@@ -163,8 +164,9 @@
 
 - (void) parseXMLFile:(NSString *)xmlFilename
 {
-	NSURL *url = [NSURL fileURLWithPath:xmlFilename];
-	NSXMLParser *parser = [[NSXMLParser alloc] initWithContentsOfURL:url];
+  NSURL *url = [NSURL fileURLWithPath:[CCFileUtils fullPathFromRelativePath:xmlFilename] ];
+  NSData *data = [NSData dataWithContentsOfURL:url];
+  NSXMLParser *parser = [[NSXMLParser alloc] initWithData:data];
 
 	// we'll do the parsing
 	[parser setDelegate:self];
@@ -296,11 +298,14 @@
 			
 			if( [compression isEqualToString:@"gzip"] )
 				layerAttribs |= TMXLayerAttribGzip;
-			
-			NSAssert( !compression || [compression isEqualToString:@"gzip"], @"TMX: unsupported compression method" );
+
+			else if( [compression isEqualToString:@"zlib"] )
+				layerAttribs |= TMXLayerAttribZlib;
+
+			NSAssert( !compression || [compression isEqualToString:@"gzip"] || [compression isEqualToString:@"zlib"], @"TMX: unsupported compression method" );
 		}
 		
-		NSAssert( layerAttribs != TMXLayerAttribNone, @"TMX tile map: Only base64 and/or gzip maps are supported" );
+		NSAssert( layerAttribs != TMXLayerAttribNone, @"TMX tile map: Only base64 and/or gzip/zlib maps are supported" );
 		
 	} else if([elementName isEqualToString:@"object"]) {
 	
@@ -387,15 +392,22 @@
 		CCTMXLayerInfo *layer = [layers_ lastObject];
 		
 		unsigned char *buffer;
-		len = base64Decode((unsigned char*)[currentString UTF8String], [currentString length], &buffer);
+		len = base64Decode((unsigned char*)[currentString UTF8String], (unsigned int) [currentString length], &buffer);
 		if( ! buffer ) {
 			CCLOG(@"cocos2d: TiledMap: decode data error");
 			return;
 		}
 		
-		if( layerAttribs & TMXLayerAttribGzip ) {
+		if( layerAttribs & (TMXLayerAttribGzip | TMXLayerAttribZlib) ) {
 			unsigned char *deflated;
-			inflateMemory(buffer, len, &deflated);
+			CGSize s = [layer layerSize];
+			int sizeHint = s.width * s.height * sizeof(uint32_t);
+
+			int inflatedLen = ccInflateMemoryWithHint(buffer, len, &deflated, sizeHint);
+			NSAssert( inflatedLen == sizeHint, @"CCTMXXMLParser: Hint failed!");
+			
+			inflatedLen = (int)&inflatedLen; // XXX: to avoid warings in compiler
+
 			free( buffer );
 			
 			if( ! deflated ) {

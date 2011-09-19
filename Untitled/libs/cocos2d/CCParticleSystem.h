@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -63,9 +64,15 @@ enum {
  possible types of particle positions
  */
 typedef enum {
-	/** If the emitter is repositioned, the living particles won't be repositioned */
+	/** Living particles are attached to the world and are unaffected by emitter repositioning. */
 	kCCPositionTypeFree,
-	/** If the emitter is repositioned, the living particles will be repositioned too */
+
+	/** Living particles are attached to the world but will follow the emitter repositioning.
+	 Use case: Attach an emitter to an sprite, and you want that the emitter follows the sprite.
+	 */
+	kCCPositionTypeRelative,
+	
+	/** Living particles are attached to the emitter and are translated along with it. */
 	kCCPositionTypeGrouped,
 }tCCPositionType;
 
@@ -169,8 +176,7 @@ typedef void (*CC_UPDATE_PARTICLE_IMP)(id, SEL, tCCParticle*, CGPoint);
 	float elapsed;
 	
 	// position is from "superclass" CocosNode
-	// Emitter centerOfGravity position
-	CGPoint centerOfGravity;
+	CGPoint sourcePosition;
 	// Position variance
 	CGPoint posVar;
 	
@@ -299,8 +305,8 @@ typedef void (*CC_UPDATE_PARTICLE_IMP)(id, SEL, tCCParticle*, CGPoint);
 @property (nonatomic,readonly) NSUInteger	particleCount;
 /** How many seconds the emitter wil run. -1 means 'forever' */
 @property (nonatomic,readwrite,assign) float duration;
-/** centerOfGravity of the emitter */
-@property (nonatomic,readwrite,assign) CGPoint centerOfGravity;
+/** sourcePosition of the emitter */
+@property (nonatomic,readwrite,assign) CGPoint sourcePosition;
 /** Position variance of the emitter */
 @property (nonatomic,readwrite,assign) CGPoint posVar;
 /** life, and life variation of each particle */
@@ -415,7 +421,7 @@ typedef void (*CC_UPDATE_PARTICLE_IMP)(id, SEL, tCCParticle*, CGPoint);
 -(id) initWithDictionary:(NSDictionary*)dictionary;
 
 //! Initializes a system with a fixed number of particles
--(id) initWithTotalParticles:(int) numberOfParticles;
+-(id) initWithTotalParticles:(NSUInteger) numberOfParticles;
 //! Add a particle to the emitter
 -(BOOL) addParticle;
 //! Initializes a particle
@@ -431,6 +437,9 @@ typedef void (*CC_UPDATE_PARTICLE_IMP)(id, SEL, tCCParticle*, CGPoint);
 -(void) updateQuadWithParticle:(tCCParticle*)particle newPosition:(CGPoint)pos;
 //! should be overriden by subclasses
 -(void) postStep;
+
+//! called in every loop.
+-(void) update: (ccTime) dt;
 
 @end
 

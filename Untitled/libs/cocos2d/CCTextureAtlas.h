@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +40,8 @@
  The quads are rendered using an OpenGL ES VBO.
  To render the quads using an interleaved vertex array list, you should modify the ccConfig.h file 
  */
-@interface CCTextureAtlas : NSObject {
+@interface CCTextureAtlas : NSObject
+{
 	NSUInteger			totalQuads_;
 	NSUInteger			capacity_;
 	ccV3F_C4B_T2F_Quad	*quads_;	// quads to be rendered
@@ -47,6 +49,7 @@
 	CCTexture2D			*texture_;
 #if CC_USES_VBO
 	GLuint				buffersVBO_[2]; //0: vertex  1: indices
+	BOOL				dirty_; //indicates whether or not the array buffer of the VBO needs to be updated
 #endif // CC_USES_VBO
 }
 
@@ -115,9 +118,8 @@
  @since v0.7.2
  */
 -(void) removeAllQuads;
- 
 
-/** resize the capacity of the Texture Atlas.
+/** resize the capacity of the CCTextureAtlas.
  * The new capacity can be lower or higher than the current one
  * It returns YES if the resize was successful.
  * If it fails to resize the capacity it will return NO with a new capacity of 0.
@@ -129,6 +131,14 @@
  * n can't be greater than the capacity of the Atlas
  */
 -(void) drawNumberOfQuads: (NSUInteger) n;
+
+
+/** draws n quads from an index (offset).
+ n + start can't be greater than the capacity of the atlas
+ 
+ @since v1.0
+ */
+-(void) drawNumberOfQuads: (NSUInteger) n fromIndex: (NSUInteger) start;
 
 /** draws all the Atlas's Quads
  */

@@ -64,7 +64,7 @@
 	// Texture used
 	CCTexture2D*		texture_;
 
-	// texture lenght
+	// texture length
 	float			textureLength_;
 
 	// RGBA protocol
@@ -77,7 +77,7 @@
 /** Texture used by the ribbon. Conforms to CCTextureProtocol protocol */
 @property (nonatomic,readwrite,retain) CCTexture2D* texture;
 
-/** Texture lenghts in pixels */
+/** Texture lengths in pixels */
 @property (nonatomic,readwrite) float textureLength;
 
 /** GL blendind function */
@@ -108,8 +108,8 @@
 	GLubyte	colors[50*8];
 	float		creationTime[50];
 	BOOL		finished;
-	uint		end;
-	uint		begin;
+	NSUInteger		end;
+	NSUInteger		begin;
 }
 -(id)init;
 -(void)reset;

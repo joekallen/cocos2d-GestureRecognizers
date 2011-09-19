@@ -1,8 +1,10 @@
 /*
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
- * Copyright (c) 2008-2010 Ricardo Quesada
  * Copyright (c) 2009 Valentin Milea
+ *
+ * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -98,8 +100,8 @@ enum {
  Camera:
  - Each node has a camera. By default it points to the center of the CCNode.
  */ 
-@interface CCNode : NSObject {
-	
+@interface CCNode : NSObject
+{	
 	// rotation angle
 	float rotation_;	
 	
@@ -109,6 +111,9 @@ enum {
 	// position of the node
 	CGPoint position_;
 	CGPoint	positionInPixels_;
+	
+	// skew angles
+	float skewX_, skewY_;
 
 	// is visible
 	BOOL visible_;
@@ -154,7 +159,7 @@ enum {
 	NSInteger tag_;
     
 	// user data field
-	void *userData;
+	void *userData_;
 
 	// Is running
 	BOOL isRunning_;
@@ -165,11 +170,11 @@ enum {
 #if	CC_NODE_TRANSFORM_USING_AFFINE_MATRIX
 	BOOL isTransformGLDirty_:1;
 #endif
-
+    
 #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
-  CCArray* gestureRecognizers_;
-  CGSize touchableArea_;
-  BOOL isTouchEnabled_;
+    CCArray* gestureRecognizers_;
+    CGSize touchableArea_;
+    BOOL isTouchEnabled_;
 #endif
 }
 
@@ -184,6 +189,20 @@ enum {
  @since v0.8
  */
 @property (nonatomic,readwrite) float vertexZ;
+
+/** The X skew angle of the node in degrees.
+ This angle describes the shear distortion in the X direction.
+ Thus, it is the angle between the Y axis and the left edge of the shape
+ The default skewX angle is 0. Positive values distort the node in a CW direction.
+ */
+@property(nonatomic,readwrite,assign) float skewX;
+
+/** The Y skew angle of the node in degrees.
+ This angle describes the shear distortion in the Y direction.
+ Thus, it is the angle between the X axis and the bottom edge of the shape
+ The default skewY angle is 0. Positive values distort the node in a CCW direction.
+ */
+@property(nonatomic,readwrite,assign) float skewY;
 /** The rotation (angle) of the node in degrees. 0 is the default rotation angle. Positive values rotate node CW. */
 @property(nonatomic,readwrite,assign) float rotation;
 /** The scale factor of the node. 1.0 is the default scale factor. It modifies the X and Y scale at the same time. */
@@ -209,7 +228,7 @@ enum {
  It's like a pin in the node where it is "attached" to its parent.
  The anchorPoint is normalized, like a percentage. (0,0) means the bottom-left corner and (1,1) means the top-right corner.
  But you can use values higher than (1,1) and lower than (0,0) too.
- The default anchorPoint is (0.5,0.5), so it starts in the center of the node.
+ The default anchorPoint is (0,0). It starts in the bottom-left corner. CCSprite and other subclasses have a different default anchorPoint.
  @since v0.8
  */
 @property(nonatomic,readwrite) CGPoint anchorPoint;
@@ -269,7 +288,7 @@ enum {
 -(void) onEnterTransitionDidFinish;
 /** callback that is called every time the CCNode leaves the 'stage'.
  If the CCNode leaves the 'stage' with a transition, this callback is called when the transition finishes.
- During onExit you can't a "sister/brother" node.
+ During onExit you can't access a sibling node.
  */
 -(void) onExit;
 
@@ -277,22 +296,22 @@ enum {
 // composition: ADD
 
 /** Adds a child to the container with z-order as 0.
- It returns self, so you can chain several addChilds.
+ If the child is added to a 'running' node, then 'onEnter' and 'onEnterTransitionDidFinish' will be called immediately.
  @since v0.7.1
  */
--(id) addChild: (CCNode*)node;
+-(void) addChild: (CCNode*)node;
 
-/** Adds a child to the container with a z-order
- It returns self, so you can chain several addChilds.
+/** Adds a child to the container with a z-order.
+ If the child is added to a 'running' node, then 'onEnter' and 'onEnterTransitionDidFinish' will be called immediately.
  @since v0.7.1
  */
--(id) addChild: (CCNode*)node z:(int)z;
+-(void) addChild: (CCNode*)node z:(NSInteger)z;
 
-/** Adds a child to the container with z order and tag
- It returns self, so you can chain several addChilds.
+/** Adds a child to the container with z order and tag.
+ If the child is added to a 'running' node, then 'onEnter' and 'onEnterTransitionDidFinish' will be called immediately.
  @since v0.7.1
  */
--(id) addChild: (CCNode*)node z:(int)z tag:(int)tag;
+-(void) addChild: (CCNode*)node z:(NSInteger)z tag:(NSInteger)tag;
 
 // composition: REMOVE
 
@@ -310,7 +329,7 @@ enum {
 /** Removes a child from the container by tag value. It will also cleanup all running actions depending on the cleanup parameter
  @since v0.7.1
  */
--(void) removeChildByTag:(int) tag cleanup:(BOOL)cleanup;
+-(void) removeChildByTag:(NSInteger) tag cleanup:(BOOL)cleanup;
 
 /** Removes all children from the container and do a cleanup all running actions depending on the cleanup parameter.
  @since v0.7.1
@@ -322,12 +341,12 @@ enum {
  @return returns a CCNode object
  @since v0.7.1
  */
--(CCNode*) getChildByTag:(int) tag;
+-(CCNode*) getChildByTag:(NSInteger) tag;
 
 /** Reorders a child according to a new z value.
  * The child MUST be already added.
  */
--(void) reorderChild:(CCNode*)child z:(int)zOrder;
+-(void) reorderChild:(CCNode*)child z:(NSInteger)zOrder;
 
 /** Stops all running actions and schedulers
  @since v0.8
@@ -396,18 +415,18 @@ enum {
 /** Removes an action from the running action list given its tag
  @since v0.7.1
 */
--(void) stopActionByTag:(int) tag;
+-(void) stopActionByTag:(NSInteger) tag;
 /** Gets an action from the running action list given its tag
  @since v0.7.1
  @return the Action the with the given tag
  */
--(CCAction*) getActionByTag:(int) tag;
+-(CCAction*) getActionByTag:(NSInteger) tag;
 /** Returns the numbers of actions that are running plus the ones that are schedule to run (actions in actionsToAdd and actions arrays). 
  * Composable actions are counted as 1 action. Example:
  *    If you are running 1 Sequence of 7 actions, it will return 1.
  *    If you are running 7 Sequences of 2 actions, it will return 7.
  */
--(int) numberOfRunningActions;
+-(NSUInteger) numberOfRunningActions;
 
 // timers
 
@@ -428,7 +447,7 @@ enum {
 
  @since v0.99.3
  */
--(void) scheduleUpdateWithPriority:(int)priority;
+-(void) scheduleUpdateWithPriority:(NSInteger)priority;
 
 /* unschedules the "update" method.
  
@@ -473,7 +492,7 @@ enum {
 -(void) startAllGestureRecognizers;
 
 /*  used to see if a touch is in a nodes touchAble area, if the area isn't set
- the content size is used */
+    the content size is used */
 -(BOOL) isPointInArea:(CGPoint)pt;
 -(BOOL) isNodeInTreeTouched:(CGPoint)pt;
 
@@ -482,56 +501,60 @@ enum {
 @property(nonatomic,readonly) CCArray *gestureRecognizers;
 
 /** whether or not it will receive Touch events.
- You can enable / disable touch events with this property.
- Only the touches of this node will be affected. This "method" is not propagated to it's children.
- @since v0.8.1
- */
+  You can enable / disable touch events with this property.
+  Only the touches of this node will be affected. This "method" is not propagated to it's children.
+  @since v0.8.1
+  */
 @property(nonatomic,assign) BOOL isTouchEnabled;
 #endif
 
+
 // transformation methods
 
-/** Returns the local affine transform matrix
+/** Returns the matrix that transform the node's (local) space coordinates into the parent's space coordinates.
+ The matrix is in Pixels.
  @since v0.7.1
  */
 - (CGAffineTransform)nodeToParentTransform;
-/** Returns the inverse local affine transform matrix
+/** Returns the matrix that transform parent's space coordinates to the node's (local) space coordinates.
+ The matrix is in Pixels.
  @since v0.7.1
  */
 - (CGAffineTransform)parentToNodeTransform;
-/** Retrusn the world affine transform matrix
+/** Retrusn the world affine transform matrix. The matrix is in Pixels.
  @since v0.7.1
  */
 - (CGAffineTransform)nodeToWorldTransform;
-/** Returns the inverse world affine transform matrix
+/** Returns the inverse world affine transform matrix. The matrix is in Pixels.
  @since v0.7.1
  */
 - (CGAffineTransform)worldToNodeTransform;
-/** converts a world coordinate to local coordinate
+/** Converts a Point to node (local) space coordinates. The result is in Points.
  @since v0.7.1
  */
 - (CGPoint)convertToNodeSpace:(CGPoint)worldPoint;
-/** converts local coordinate to world space
+/** Converts a Point to world space coordinates. The result is in Points.
  @since v0.7.1
  */
 - (CGPoint)convertToWorldSpace:(CGPoint)nodePoint;
-/** converts a world coordinate to local coordinate
- treating the returned/received node point as anchor relative
+/** Converts a Point to node (local) space coordinates. The result is in Points.
+ treating the returned/received node point as anchor relative.
  @since v0.7.1
  */
 - (CGPoint)convertToNodeSpaceAR:(CGPoint)worldPoint;
-/** converts local coordinate to world space
- treating the returned/received node point as anchor relative
+/** Converts a local Point to world space coordinates.The result is in Points.
+ treating the returned/received node point as anchor relative.
  @since v0.7.1
  */
 - (CGPoint)convertToWorldSpaceAR:(CGPoint)nodePoint;
 
 #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
-/** convenience methods which take a UITouch instead of CGPoint
+/** Converts a UITouch to node (local) space coordinates. The result is in Points.
  @since v0.7.1
  */
 - (CGPoint)convertTouchToNodeSpace:(UITouch *)touch;
-/** converts a UITouch (world coordinates) into a local coordiante. This method is AR (Anchor Relative).
+/** Converts a UITouch to node (local) space coordinates. The result is in Points.
+ This method is AR (Anchor Relative)..
  @since v0.7.1
  */
 - (CGPoint)convertTouchToNodeSpaceAR:(UITouch *)touch;

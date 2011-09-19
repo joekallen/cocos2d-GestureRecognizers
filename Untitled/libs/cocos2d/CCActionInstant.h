@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +31,8 @@
  the CCIntervalAction actions.
 */ 
 @interface CCActionInstant : CCFiniteTimeAction <NSCopying>
-{}
+{
+}
 @end
 
 /** Show the node
@@ -92,9 +94,13 @@
  */
 @interface CCCallFunc : CCActionInstant <NSCopying>
 {
-	id targetCallback;
-	SEL selector;
+	id targetCallback_;
+	SEL selector_;
 }
+
+/** Target that will be called */
+@property (nonatomic, readwrite, retain) id targetCallback;
+
 /** creates the action with the callback */
 +(id) actionWithTarget: (id) t selector:(SEL) s;
 /** initializes the action with the callback */
@@ -103,7 +109,7 @@
 -(void) execute;
 @end
 
-/** Calls a 'callback' with the node as the first argument
+/** Calls a 'callback' with the node as the first argument.
  N means Node
  */
 @interface CCCallFuncN : CCCallFunc
@@ -111,14 +117,13 @@
 }
 @end
 
-
 typedef void (*CC_CALLBACK_ND)(id, SEL, id, void *);
-/** Calls a 'callback' with the node as the first argument and the 2nd argument is data
+/** Calls a 'callback' with the node as the first argument and the 2nd argument is data.
  * ND means: Node and Data. Data is void *, so it could be anything.
  */
 @interface CCCallFuncND : CCCallFuncN
 {
-	void			*data;
+	void			*data_;
 	CC_CALLBACK_ND	callbackMethod_;
 }
 
@@ -131,21 +136,43 @@ typedef void (*CC_CALLBACK_ND)(id, SEL, id, void *);
 -(id) initWithTarget:(id) t selector:(SEL) s data:(void*) d;
 @end
 
+/** Calls a 'callback' with an object as the first argument.
+ O means Object.
+ @since v0.99.5
+ */
+@interface CCCallFuncO : CCCallFunc
+{
+	id	object_;
+}
+/** object to be passed as argument */
+@property (nonatomic, readwrite, retain) id object;
+
+/** creates the action with the callback and the object to pass as an argument */
++(id) actionWithTarget: (id) t selector:(SEL) s object:(id)object;
+/** initializes the action with the callback and the object to pass as an argument */
+-(id) initWithTarget:(id) t selector:(SEL) s object:(id)object;
+
+@end
+
 #pragma mark Blocks Support
 
 #if NS_BLOCKS_AVAILABLE
 
-/** Executes a callback using a block
+/** Executes a callback using a block.
  */
 @interface CCCallBlock : CCActionInstant<NSCopying>
 {
 	void (^block_)();
 }
 
-/** creates the action with the specified block, to be used as a callback */
+/** creates the action with the specified block, to be used as a callback.
+ The block will be "copied".
+ */
 +(id) actionWithBlock:(void(^)())block;
 
-/** initialized the action with the specified block, to be used as a callback */
+/** initialized the action with the specified block, to be used as a callback.
+ The block will be "copied".
+ */
 -(id) initWithBlock:(void(^)())block;
 
 /** executes the callback */
@@ -154,17 +181,21 @@ typedef void (*CC_CALLBACK_ND)(id, SEL, id, void *);
 
 @class CCNode;
 
-/** Executes a callback using a block with a single CCNode parameter
+/** Executes a callback using a block with a single CCNode parameter.
  */
 @interface CCCallBlockN : CCActionInstant<NSCopying>
 {
 	void (^block_)(CCNode *);
 }
 
-/** creates the action with the specified block, to be used as a callback */
+/** creates the action with the specified block, to be used as a callback.
+ The block will be "copied".
+ */
 +(id) actionWithBlock:(void(^)(CCNode *node))block;
 
-/** initialized the action with the specified block, to be used as a callback */
+/** initialized the action with the specified block, to be used as a callback.
+ The block will be "copied".
+ */
 -(id) initWithBlock:(void(^)(CCNode *node))block;
 
 /** executes the callback */

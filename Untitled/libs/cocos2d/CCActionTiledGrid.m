@@ -210,12 +210,12 @@ typedef struct
 	[super dealloc];
 }
 
--(void)shuffle:(int*)array count:(int)len
+-(void)shuffle:(int*)array count:(NSUInteger)len
 {
-	int i;
+	NSInteger i;
 	for( i = len - 1; i >= 0; i-- )
 	{
-		int j = rand() % (i+1);
+		NSInteger j = rand() % (i+1);
 		int v = array[i];
 		array[i] = array[j];
 		array[j] = v;
@@ -226,7 +226,7 @@ typedef struct
 {
 	CGPoint	pos2;
 	
-	int idx = pos.x * gridSize_.y + pos.y;
+	NSInteger idx = pos.x * gridSize_.y + pos.y;
 	
 	pos2.x = tilesOrder[idx] / (int)gridSize_.y;
 	pos2.y = tilesOrder[idx] % (int)gridSize_.y;
@@ -316,6 +316,7 @@ typedef struct
 	CGPoint	n = ccpMult( ccp(gridSize_.x,gridSize_.y), time);
 	if ( (n.x+n.y) == 0.0f )
 		return 1.0f;
+	
 	return powf( (pos.x+pos.y) / (n.x+n.y), 6 );
 }
 
@@ -382,9 +383,9 @@ typedef struct
 -(float)testFunc:(ccGridSize)pos time:(ccTime)time
 {
 	CGPoint	n = ccpMult(ccp(gridSize_.x, gridSize_.y), (1.0f-time));
-	
 	if ( (pos.x+pos.y) == 0 )
 		return 1.0f;
+	
 	return powf( (n.x+n.y) / (pos.x+pos.y), 6 );
 }
 
@@ -402,6 +403,7 @@ typedef struct
 	CGPoint	n = ccpMult(ccp(gridSize_.x, gridSize_.y), time);
 	if ( n.y == 0 )
 		return 1.0f;
+	
 	return powf( pos.y / n.y, 6 );
 }
 
@@ -432,6 +434,7 @@ typedef struct
 	CGPoint	n = ccpMult(ccp(gridSize_.x,gridSize_.y), (1.0f - time));
 	if ( pos.y == 0 )
 		return 1.0f;
+	
 	return powf( n.y / pos.y, 6 );
 }
 
@@ -472,12 +475,12 @@ typedef struct
 	[super dealloc];
 }
 
--(void)shuffle:(int*)array count:(int)len
+-(void)shuffle:(int*)array count:(NSUInteger)len
 {
-	int i;
+	NSInteger i;
 	for( i = len - 1; i >= 0; i-- )
 	{
-		int j = rand() % (i+1);
+		NSInteger j = rand() % (i+1);
 		int v = array[i];
 		array[i] = array[j];
 		array[j] = v;

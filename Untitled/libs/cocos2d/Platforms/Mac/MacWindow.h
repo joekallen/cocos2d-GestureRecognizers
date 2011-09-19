@@ -1,7 +1,7 @@
 /*
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
- * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2010 Ricardo Quesada
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,9 +22,21 @@
  * THE SOFTWARE.
  */
 
+// Only compile this code on Mac. These files should not be included on your iOS project.
+// But in case they are included, it won't be compiled.
+#import <Availability.h>
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+#elif defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
 
-/*
+#import <Cocoa/Cocoa.h>
 
-EMPTY FILE
 
-*/
+@interface MacWindow : NSWindow
+{
+}
+- (id) initWithFrame:(NSRect)frame fullscreen:(BOOL)fullscreen;
+
+@end
+
+
+#endif // __MAC_OS_X_VERSION_MAX_ALLOWED

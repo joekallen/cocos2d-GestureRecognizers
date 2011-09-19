@@ -1,8 +1,10 @@
 /*
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
- * Copyright (c) 2010 Ricardo Quesada
  * Copyright (c) 2010 Neophit
+ * 
+ * Copyright (c) 2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +32,7 @@
 
 #import "CCTMXObjectGroup.h"
 #import "CCTMXXMLParser.h"
+#import "ccMacros.h"
 #import "Support/CGPointExtension.h"
 
 
@@ -38,10 +41,10 @@
 
 @implementation CCTMXObjectGroup
 
-@synthesize groupName=groupName_;
-@synthesize objects=objects_;
-@synthesize positionOffset=positionOffset_;
-@synthesize properties=properties_;
+@synthesize groupName = groupName_;
+@synthesize objects = objects_;
+@synthesize positionOffset = positionOffset_;
+@synthesize properties = properties_;
 
 -(id) init
 {

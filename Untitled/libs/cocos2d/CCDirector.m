@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +26,7 @@
 
 /* Idea of decoupling Window from Director taken from OC3D project: http://code.google.com/p/oc3d/
  */
- 
+
 #import <unistd.h>
 #import <Availability.h>
 
@@ -34,6 +35,7 @@
 #import "CCScheduler.h"
 #import "CCActionManager.h"
 #import "CCTextureCache.h"
+#import "CCAnimationCache.h"
 #import "CCLabelAtlas.h"
 #import "ccMacros.h"
 #import "CCTransition.h"
@@ -58,9 +60,7 @@
 #define CC_DIRECTOR_DEFAULT CCDirectorDisplayLink
 #endif
 
-#if CC_ENABLE_PROFILERS
 #import "Support/CCProfiling.h"
-#endif
 
 #define kDefaultFPS		60.0	// 60 frames per second
 
@@ -73,22 +73,20 @@ extern NSString * cocos2dVersion(void);
 -(void) showFPS;
 // calculates delta time since last time it was called
 -(void) calculateDeltaTime;
-
-#if CC_ENABLE_PROFILERS
-- (void) showProfilers;
-#endif
-
 @end
 
 @implementation CCDirector
 
-@synthesize animationInterval=animationInterval_;
+@synthesize animationInterval = animationInterval_;
 @synthesize runningScene = runningScene_;
 @synthesize displayFPS = displayFPS_;
-@synthesize nextDeltaTimeZero=nextDeltaTimeZero_;
-@synthesize isPaused=isPaused_;
-@synthesize sendCleanupToScene=sendCleanupToScene_;
-@synthesize runningThread=runningThread_;
+@synthesize nextDeltaTimeZero = nextDeltaTimeZero_;
+@synthesize isPaused = isPaused_;
+@synthesize sendCleanupToScene = sendCleanupToScene_;
+@synthesize runningThread = runningThread_;
+@synthesize notificationNode = notificationNode_;
+@synthesize projectionDelegate = projectionDelegate_;
+@synthesize totalFrames = totalFrames_;
 //
 // singleton stuff
 //
@@ -128,15 +126,20 @@ static CCDirector *_sharedDirector = nil;
 		runningScene_ = nil;
 		nextScene_ = nil;
 		
+		notificationNode_ = nil;
+		
 		oldAnimationInterval_ = animationInterval_ = 1.0 / kDefaultFPS;
 		scenesStack_ = [[NSMutableArray alloc] initWithCapacity:10];
 		
 		// Set default projection (3D)
 		projection_ = kCCDirectorProjectionDefault;
-		
+
+		// projection delegate if "Custom" projection is used
+		projectionDelegate_ = nil;
+
 		// FPS
 		displayFPS_ = NO;
-		frames_ = 0;
+		totalFrames_ = frames_ = 0;
 		
 		// paused ?
 		isPaused_ = NO;
@@ -158,7 +161,10 @@ static CCDirector *_sharedDirector = nil;
 	[FPSLabel_ release];
 #endif
 	[runningScene_ release];
+	[notificationNode_ release];
 	[scenesStack_ release];
+	
+	[projectionDelegate_ release];
 	
 	_sharedDirector = nil;
 	
@@ -213,6 +219,12 @@ static CCDirector *_sharedDirector = nil;
 		dt = (now.tv_sec - lastUpdate_.tv_sec) + (now.tv_usec - lastUpdate_.tv_usec) / 1000000.0f;
 		dt = MAX(0,dt);
 	}
+
+#ifdef DEBUG
+	// If we are debugging our code, prevent big delta time
+	if( dt > 0.2f )
+		dt = 1/60.0f;
+#endif
 	
 	lastUpdate_ = now;	
 }
@@ -222,7 +234,7 @@ static CCDirector *_sharedDirector = nil;
 -(void) purgeCachedData
 {
 	[CCLabelBMFont purgeCachedData];	
-	[CCTextureCache purgeSharedTextureCache];	
+	[[CCTextureCache sharedTextureCache] removeUnusedTextures];	
 }
 
 #pragma mark Director - Scene OpenGL Helper
@@ -239,40 +251,7 @@ static CCDirector *_sharedDirector = nil;
 
 -(void) setProjection:(ccDirectorProjection)projection
 {
-	CGSize size = winSizeInPixels_;
-	switch (projection) {
-		case kCCDirectorProjection2D:
-			glViewport(0, 0, size.width, size.height);
-			glMatrixMode(GL_PROJECTION);
-			glLoadIdentity();
-			ccglOrtho(0, size.width, 0, size.height, -1024, 1024);
-			glMatrixMode(GL_MODELVIEW);
-			glLoadIdentity();			
-			break;
-
-		case kCCDirectorProjection3D:
-			glViewport(0, 0, size.width, size.height);
-			glMatrixMode(GL_PROJECTION);
-			glLoadIdentity();
-			gluPerspective(60, (GLfloat)size.width/size.height, 0.5f, 1500.0f);
-			
-			glMatrixMode(GL_MODELVIEW);	
-			glLoadIdentity();
-			gluLookAt( size.width/2, size.height/2, [self getZEye],
-					  size.width/2, size.height/2, 0,
-					  0.0f, 1.0f, 0.0f);			
-			break;
-			
-		case kCCDirectorProjectionCustom:
-			// if custom, ignore it. The user is resposible for setting the correct projection
-			break;
-			
-		default:
-			CCLOG(@"cocos2d: Director: unrecognized projecgtion");
-			break;
-	}
-	
-	projection_ = projection;
+	CCLOG(@"cocos2d: override me");
 }
 
 - (void) setAlphaBlending: (BOOL) on
@@ -291,7 +270,7 @@ static CCDirector *_sharedDirector = nil;
 		ccglClearDepth(1.0f);
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LEQUAL);
-		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+//		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 	} else
 		glDisable( GL_DEPTH_TEST );
 }
@@ -392,9 +371,10 @@ static CCDirector *_sharedDirector = nil;
 	[scenesStack_ removeLastObject];
 	NSUInteger c = [scenesStack_ count];
 	
-	if( c == 0 ) {
+	if( c == 0 )
 		[self end];
-	} else {
+	else {
+		sendCleanupToScene_ = YES;
 		nextScene_ = [scenesStack_ objectAtIndex:c-1];
 	}
 }
@@ -419,10 +399,14 @@ static CCDirector *_sharedDirector = nil;
 	FPSLabel_ = nil;
 #endif	
 
+	[projectionDelegate_ release];
+	projectionDelegate_ = nil;
+	
 	// Purge bitmap cache
 	[CCLabelBMFont purgeCachedData];
 
 	// Purge all managers
+	[CCAnimationCache purgeSharedAnimationCache];
 	[CCSpriteFrameCache purgeSharedSpriteFrameCache];
 	[CCScheduler purgeSharedScheduler];
 	[CCActionManager purgeSharedManager];
@@ -529,7 +513,7 @@ static CCDirector *_sharedDirector = nil;
 		[FPSLabel_ setString:str];
 		[str release];
 	}
-		
+
 	[FPSLabel_ draw];
 }
 #else
@@ -547,7 +531,7 @@ static CCDirector *_sharedDirector = nil;
 	}
 	
 	NSString *str = [NSString stringWithFormat:@"%.2f",frameRate_];
-	CCTexture2D *texture = [[CCTexture2D alloc] initWithString:str dimensions:CGSizeMake(100,30) alignment:UITextAlignmentLeft fontName:@"Arial" fontSize:24];
+	CCTexture2D *texture = [[CCTexture2D alloc] initWithString:str dimensions:CGSizeMake(100,30) alignment:CCTextAlignmentLeft fontName:@"Arial" fontSize:24];
 
 	// Default GL states: GL_TEXTURE_2D, GL_VERTEX_ARRAY, GL_COLOR_ARRAY, GL_TEXTURE_COORD_ARRAY
 	// Needed states: GL_TEXTURE_2D, GL_VERTEX_ARRAY, GL_TEXTURE_COORD_ARRAY
@@ -567,15 +551,15 @@ static CCDirector *_sharedDirector = nil;
 }
 #endif
 
-#if CC_ENABLE_PROFILERS
 - (void) showProfilers {
+#if CC_ENABLE_PROFILERS
 	accumDtForProfiler_ += dt;
 	if (accumDtForProfiler_ > 1.0f) {
 		accumDtForProfiler_ = 0;
 		[[CCProfiler sharedProfiler] displayTimers];
 	}
+#endif // CC_ENABLE_PROFILERS
 }
-#endif
 
 @end
 

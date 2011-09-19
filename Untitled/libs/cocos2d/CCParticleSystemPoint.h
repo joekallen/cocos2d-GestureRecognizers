@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,9 +25,12 @@
  */
 
 
+#import <Availability.h>
 #import "CCParticleSystem.h"
 
 #define CC_MAX_PARTICLE_SIZE 64
+
+#ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 
 /** CCParticleSystemPoint is a subclass of CCParticleSystem
  Attributes of a Particle System:
@@ -51,3 +55,11 @@
 }
 @end
 
+#elif __MAC_OS_X_VERSION_MAX_ALLOWED
+
+#import "CCParticleSystemQuad.h"
+
+@interface CCParticleSystemPoint : CCParticleSystemQuad
+@end
+
+#endif

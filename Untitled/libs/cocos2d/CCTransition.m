@@ -2,6 +2,7 @@
  * cocos2d for iPhone: http://www.cocos2d-iphone.org
  *
  * Copyright (c) 2008-2010 Ricardo Quesada
+ * Copyright (c) 2011 Zynga Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,9 +46,8 @@
 #import "Platforms/Mac/CCEventDispatcher.h"
 #endif
 
-enum {
-	kSceneFade = 0xFADEFADE,
-};
+const uint32_t kSceneFade = 0xFADEFADE;
+
 
 @interface CCTransitionScene (Private)
 -(void) sceneOrder;
@@ -93,6 +93,8 @@ enum {
 
 -(void) draw
 {
+	[super draw];
+
 	if( inSceneOnTop_ ) {
 		[outScene_ visit];
 		[inScene_ visit];
@@ -790,7 +792,7 @@ enum {
 {
 	[super onEnter];
 	
-	CCColorLayer *l = [CCColorLayer layerWithColor:color];
+	CCLayerColor *l = [CCLayerColor layerWithColor:color];
 	[inScene_ setVisible: NO];
 	
 	[self addChild: l z:2 tag:kSceneFade];
@@ -833,7 +835,7 @@ enum {
 	// in which we are going to add our rendertextures
 	ccColor4B  color = {0,0,0,0};
 	CGSize size = [[CCDirector sharedDirector] winSize];
-	CCColorLayer * layer = [CCColorLayer layerWithColor:color];
+	CCLayerColor * layer = [CCLayerColor layerWithColor:color];
 	
 	// create the first render texture for inScene_
 	CCRenderTexture *inTexture = [CCRenderTexture renderTextureWithWidth:size.width height:size.height];

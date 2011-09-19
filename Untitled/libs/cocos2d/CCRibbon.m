@@ -135,7 +135,7 @@
 	location.x *= CC_CONTENT_SCALE_FACTOR();
 	location.y *= CC_CONTENT_SCALE_FACTOR();
 
-	w=w*0.5f;
+	w = w*0.5f;
 	// if this is the first point added, cache it and return
 	if (!pastFirstPoint_)
 	{
@@ -251,6 +251,8 @@
 
 -(void) draw
 {
+	[super draw];
+
 	if ([segments_ count] > 0)
 	{
 		// Default GL states: GL_TEXTURE_2D, GL_VERTEX_ARRAY, GL_COLOR_ARRAY, GL_TEXTURE_COORD_ARRAY
@@ -260,11 +262,9 @@
 		
 		glBindTexture(GL_TEXTURE_2D, [texture_ name]);
 
-		BOOL newBlend = NO;
-		if( blendFunc_.src != CC_BLEND_SRC || blendFunc_.dst != CC_BLEND_DST ) {
-			newBlend = YES;
+		BOOL newBlend = blendFunc_.src != CC_BLEND_SRC || blendFunc_.dst != CC_BLEND_DST;
+		if( newBlend )
 			glBlendFunc( blendFunc_.src, blendFunc_.dst );
-		}
 
 		for (CCRibbonSegment* seg in segments_)
 			[seg draw:curTime_ fadeTime:fadeTime_ color:color_];
@@ -347,7 +347,7 @@
 		{
 			// generate alpha/color for each point
 			glEnableClientState(GL_COLOR_ARRAY);
-			uint i = begin;
+			NSUInteger i = begin;
 			for (; i < end; ++i)
 			{
 				int idx = i*8;
